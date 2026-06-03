@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <world name="changxing_empty">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <gravity>0 0 -9.81</gravity>
+    <magnetic_field>6.0e-6 2.3e-5 -4.2e-5</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>-5.0 -63.0 4.2 0 0.55 0.81</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>180 180</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>180 180</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.35 0.38 0.36 1</ambient>
+            <diffuse>0.35 0.38 0.36 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://changxing_site</uri>
+      <name>changxing_site</name>
+    </include>
+
+    <model name="lidar_test_front_wall">
+      <pose>6.03 -63.005 0.75 0 0 -0.7297</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>0.35 5.0 1.5</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>0.35 5.0 1.5</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.9 0.25 0.18 1</ambient>
+            <diffuse>0.9 0.25 0.18 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="lidar_test_left_box">
+      <pose>6.382 -56.611 0.65 0 0 -0.35</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1.4 1.2 1.3</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1.4 1.2 1.3</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.2 0.75 0.28 1</ambient>
+            <diffuse>0.2 0.75 0.28 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="lidar_test_right_box">
+      <pose>-0.284 -64.065 0.65 0 0 0.4</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1.3 1.3 1.3</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1.3 1.3 1.3</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.25 0.42 0.95 1</ambient>
+            <diffuse>0.25 0.42 0.95 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="lidar_test_rear_cylinder">
+      <pose>-3.659 -54.338 0.8 0 0 0</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <cylinder>
+              <radius>0.45</radius>
+              <length>1.6</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.45</radius>
+              <length>1.6</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.95 0.85 0.2 1</ambient>
+            <diffuse>0.95 0.85 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="lidar_test_far_box">
+      <pose>13.993 -66.102 1.0 0 0 0.2</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1.8 1.0 2.0</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1.8 1.0 2.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.82 0.35 0.95 1</ambient>
+            <diffuse>0.82 0.35 0.95 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://agv_with_lidars</uri>
+      <name>ego_agv</name>
+    </include>
+  </world>
+</sdf>

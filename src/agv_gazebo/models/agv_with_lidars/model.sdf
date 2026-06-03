@@ -1,0 +1,359 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <model name="agv_with_lidars">
+    <pose>0.0674 -57.6716 0.4 0 0 -0.7297</pose>
+    <static>false</static>
+
+    <link name="base_link">
+      <inertial>
+        <mass>850.0</mass>
+        <inertia>
+          <ixx>116.0</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>684.0</iyy>
+          <iyz>0.0</iyz>
+          <izz>708.0</izz>
+        </inertia>
+      </inertial>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>3.0 1.0 0.8</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="body_visual">
+        <geometry>
+          <box>
+            <size>3.0 1.0 0.8</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.08 0.22 0.28 1.0</ambient>
+          <diffuse>0.08 0.42 0.50 1.0</diffuse>
+          <specular>0.2 0.25 0.25 1.0</specular>
+        </material>
+      </visual>
+
+      <visual name="front_marker">
+        <pose>1.525 0 0.15 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.05 0.85 0.12</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.85 0.85 0.1 1.0</ambient>
+          <diffuse>0.95 0.95 0.15 1.0</diffuse>
+        </material>
+      </visual>
+
+      <visual name="front_left_wheel_visual">
+        <pose>1.0 0.68 -0.12 1.5708 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.28</radius>
+            <length>0.24</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.01 0.01 0.01 1.0</ambient>
+          <diffuse>0.01 0.01 0.01 1.0</diffuse>
+          <specular>0.25 0.25 0.25 1.0</specular>
+        </material>
+      </visual>
+      <visual name="front_right_wheel_visual">
+        <pose>1.0 -0.68 -0.12 1.5708 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.28</radius>
+            <length>0.24</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.01 0.01 0.01 1.0</ambient>
+          <diffuse>0.01 0.01 0.01 1.0</diffuse>
+          <specular>0.25 0.25 0.25 1.0</specular>
+        </material>
+      </visual>
+      <visual name="rear_left_wheel_visual">
+        <pose>-1.0 0.68 -0.12 1.5708 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.28</radius>
+            <length>0.24</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.01 0.01 0.01 1.0</ambient>
+          <diffuse>0.01 0.01 0.01 1.0</diffuse>
+          <specular>0.25 0.25 0.25 1.0</specular>
+        </material>
+      </visual>
+      <visual name="rear_right_wheel_visual">
+        <pose>-1.0 -0.68 -0.12 1.5708 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.28</radius>
+            <length>0.24</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.01 0.01 0.01 1.0</ambient>
+          <diffuse>0.01 0.01 0.01 1.0</diffuse>
+          <specular>0.25 0.25 0.25 1.0</specular>
+        </material>
+      </visual>
+
+    </link>
+
+    <link name="front_left_lidar_link">
+      <pose>1.35 0.45 0.47 0 0 0.785398</pose>
+      <visual name="lidar_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.13</radius>
+            <length>0.14</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.05 0.05 0.05 1.0</ambient>
+          <diffuse>0.05 0.05 0.05 1.0</diffuse>
+          <specular>0.35 0.35 0.35 1.0</specular>
+        </material>
+      </visual>
+      <visual name="lidar_color_cap">
+        <pose>0 0 0.08 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.145</radius>
+            <length>0.035</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1.0 0.12 0.08 1.0</ambient>
+          <diffuse>1.0 0.12 0.08 1.0</diffuse>
+        </material>
+      </visual>
+      <sensor name="front_left_lidar" type="gpu_lidar">
+        <topic>/sensing/lidar/front_left</topic>
+        <update_rate>10</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1800</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.141593</min_angle>
+              <max_angle>3.141593</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>32</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.959931</min_angle>
+              <max_angle>0.261799</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.2</min>
+            <max>150.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+        <alwaysOn>1</alwaysOn>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+    <joint name="front_left_lidar_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>front_left_lidar_link</child>
+    </joint>
+
+    <link name="front_right_lidar_link">
+      <pose>1.35 -0.45 0.47 0 0 -0.785398</pose>
+      <visual name="lidar_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.13</radius>
+            <length>0.14</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.05 0.05 0.05 1.0</ambient>
+          <diffuse>0.05 0.05 0.05 1.0</diffuse>
+          <specular>0.35 0.35 0.35 1.0</specular>
+        </material>
+      </visual>
+      <visual name="lidar_color_cap">
+        <pose>0 0 0.08 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.145</radius>
+            <length>0.035</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.1 0.95 0.15 1.0</ambient>
+          <diffuse>0.1 0.95 0.15 1.0</diffuse>
+        </material>
+      </visual>
+      <sensor name="front_right_lidar" type="gpu_lidar">
+        <topic>/sensing/lidar/front_right</topic>
+        <update_rate>10</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1800</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.141593</min_angle>
+              <max_angle>3.141593</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>32</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.279253</min_angle>
+              <max_angle>0.261799</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.08</min>
+            <max>120.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+        <alwaysOn>1</alwaysOn>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+    <joint name="front_right_lidar_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>front_right_lidar_link</child>
+    </joint>
+
+    <link name="rear_left_lidar_link">
+      <pose>-1.35 0.45 0.47 0 0 2.35619</pose>
+      <visual name="lidar_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.13</radius>
+            <length>0.14</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.05 0.05 0.05 1.0</ambient>
+          <diffuse>0.05 0.05 0.05 1.0</diffuse>
+          <specular>0.35 0.35 0.35 1.0</specular>
+        </material>
+      </visual>
+      <visual name="lidar_color_cap">
+        <pose>0 0 0.08 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.145</radius>
+            <length>0.035</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.15 0.45 1.0 1.0</ambient>
+          <diffuse>0.15 0.45 1.0 1.0</diffuse>
+        </material>
+      </visual>
+      <sensor name="rear_left_lidar" type="gpu_lidar">
+        <topic>/sensing/lidar/rear_left</topic>
+        <update_rate>10</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1800</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.141593</min_angle>
+              <max_angle>3.141593</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>32</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.279253</min_angle>
+              <max_angle>0.261799</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.08</min>
+            <max>120.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+        <alwaysOn>1</alwaysOn>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+    <joint name="rear_left_lidar_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>rear_left_lidar_link</child>
+    </joint>
+
+    <link name="rear_right_lidar_link">
+      <pose>-1.35 -0.45 0.47 0 0 -2.35619</pose>
+      <visual name="lidar_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.13</radius>
+            <length>0.14</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.05 0.05 0.05 1.0</ambient>
+          <diffuse>0.05 0.05 0.05 1.0</diffuse>
+          <specular>0.35 0.35 0.35 1.0</specular>
+        </material>
+      </visual>
+      <visual name="lidar_color_cap">
+        <pose>0 0 0.08 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.145</radius>
+            <length>0.035</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1.0 0.75 0.08 1.0</ambient>
+          <diffuse>1.0 0.75 0.08 1.0</diffuse>
+        </material>
+      </visual>
+      <sensor name="rear_right_lidar" type="gpu_lidar">
+        <topic>/sensing/lidar/rear_right</topic>
+        <update_rate>10</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1800</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.141593</min_angle>
+              <max_angle>3.141593</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>32</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.959931</min_angle>
+              <max_angle>0.261799</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.2</min>
+            <max>150.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+        <alwaysOn>1</alwaysOn>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+    <joint name="rear_right_lidar_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>rear_right_lidar_link</child>
+    </joint>
+  </model>
+</sdf>
