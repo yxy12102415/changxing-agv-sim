@@ -31,10 +31,10 @@ Visualization Manager:
       Enabled: true
       Name: AGV Vehicle
       Namespaces:
-        agv_axles: true
         agv_body: true
-        agv_cabin: true
-        agv_heading: true
+        agv_front_marker: true
+        agv_lidar_caps: true
+        agv_lidar_shells: true
         agv_wheels: true
       Topic:
         Depth: 5

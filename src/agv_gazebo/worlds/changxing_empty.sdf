@@ -11,6 +11,20 @@
     <gravity>0 0 -9.81</gravity>
     <magnetic_field>6.0e-6 2.3e-5 -4.2e-5</magnetic_field>
     <atmosphere type="adiabatic"/>
+    <scene>
+      <ambient>0.78 0.78 0.78 1.0</ambient>
+      <background>0.86 0.90 0.96 1.0</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <light name="sun" type="directional">
+      <pose>0 0 12 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <intensity>1.35</intensity>
+      <diffuse>1.0 0.98 0.92 1.0</diffuse>
+      <specular>0.35 0.35 0.32 1.0</specular>
+      <direction>-0.45 0.25 -0.86</direction>
+    </light>
 
     <gui fullscreen="0">
       <camera name="user_camera">
@@ -51,7 +65,7 @@
     </include>
 
     <model name="lidar_test_front_wall">
-      <pose>6.03 -63.005 0.75 0 0 -0.7297</pose>
+      <pose>11.2 -58.2 0.75 0 0 -0.7297</pose>
       <static>true</static>
       <link name="link">
         <collision name="collision">
@@ -76,7 +90,7 @@
     </model>
 
     <model name="lidar_test_left_box">
-      <pose>6.382 -56.611 0.65 0 0 -0.35</pose>
+      <pose>9.6 -52.0 0.65 0 0 -0.35</pose>
       <static>true</static>
       <link name="link">
         <collision name="collision">
@@ -101,7 +115,7 @@
     </model>
 
     <model name="lidar_test_right_box">
-      <pose>-0.284 -64.065 0.65 0 0 0.4</pose>
+      <pose>-4.6 -67.8 0.65 0 0 0.4</pose>
       <static>true</static>
       <link name="link">
         <collision name="collision">
@@ -126,7 +140,7 @@
     </model>
 
     <model name="lidar_test_rear_cylinder">
-      <pose>-3.659 -54.338 0.8 0 0 0</pose>
+      <pose>-7.7 -57.0 0.8 0 0 0</pose>
       <static>true</static>
       <link name="link">
         <collision name="collision">
@@ -153,7 +167,7 @@
     </model>
 
     <model name="lidar_test_far_box">
-      <pose>13.993 -66.102 1.0 0 0 0.2</pose>
+      <pose>17.0 -61.2 1.0 0 0 0.2</pose>
       <static>true</static>
       <link name="link">
         <collision name="collision">
@@ -172,6 +186,510 @@
           <material>
             <ambient>0.82 0.35 0.95 1</ambient>
             <diffuse>0.82 0.35 0.95 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="moving_vehicle_1">
+      <pose>-22.83 -37.19 0.4 0 0 -0.7297</pose>
+      <static>false</static>
+      <link name="base_link">
+        <inertial>
+          <mass>850.0</mass>
+          <inertia>
+            <ixx>116.0</ixx>
+            <ixy>0.0</ixy>
+            <ixz>0.0</ixz>
+            <iyy>684.0</iyy>
+            <iyz>0.0</iyz>
+            <izz>708.0</izz>
+          </inertia>
+        </inertial>
+        <collision name="body_collision">
+          <geometry>
+            <box>
+              <size>3.0 1.0 0.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <box>
+              <size>3.0 1.0 0.8</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.36 0.12 0.10 1.0</ambient>
+            <diffuse>0.74 0.22 0.18 1.0</diffuse>
+            <specular>0.25 0.18 0.16 1.0</specular>
+          </material>
+        </visual>
+        <visual name="front_marker">
+          <pose>1.525 0 0.15 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.05 0.85 0.12</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.95 0.95 0.15 1.0</ambient>
+            <diffuse>0.95 0.95 0.15 1.0</diffuse>
+          </material>
+        </visual>
+        <visual name="front_left_wheel_visual">
+          <pose>1.0 0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+        <visual name="front_right_wheel_visual">
+          <pose>1.0 -0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+        <visual name="rear_left_wheel_visual">
+          <pose>-1.0 0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+        <visual name="rear_right_wheel_visual">
+          <pose>-1.0 -0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+      </link>
+      <link name="front_left_lidar_link">
+        <pose>1.35 0.45 0.47 0 0 0.785398</pose>
+        <visual name="lidar_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.13</radius>
+              <length>0.14</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.05 0.05 0.05 1.0</diffuse>
+            <specular>0.35 0.35 0.35 1.0</specular>
+          </material>
+        </visual>
+        <visual name="lidar_color_cap">
+          <pose>0 0 0.08 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.145</radius>
+              <length>0.035</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>1.0 0.12 0.08 1.0</ambient>
+            <diffuse>1.0 0.12 0.08 1.0</diffuse>
+          </material>
+        </visual>
+      </link>
+      <joint name="front_left_lidar_joint" type="fixed">
+        <parent>base_link</parent>
+        <child>front_left_lidar_link</child>
+      </joint>
+      <link name="front_right_lidar_link">
+        <pose>1.35 -0.45 0.47 0 0 -0.785398</pose>
+        <visual name="lidar_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.13</radius>
+              <length>0.14</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.05 0.05 0.05 1.0</diffuse>
+            <specular>0.35 0.35 0.35 1.0</specular>
+          </material>
+        </visual>
+        <visual name="lidar_color_cap">
+          <pose>0 0 0.08 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.145</radius>
+              <length>0.035</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.1 0.95 0.15 1.0</ambient>
+            <diffuse>0.1 0.95 0.15 1.0</diffuse>
+          </material>
+        </visual>
+      </link>
+      <joint name="front_right_lidar_joint" type="fixed">
+        <parent>base_link</parent>
+        <child>front_right_lidar_link</child>
+      </joint>
+      <link name="rear_left_lidar_link">
+        <pose>-1.35 0.45 0.47 0 0 2.35619</pose>
+        <visual name="lidar_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.13</radius>
+              <length>0.14</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.05 0.05 0.05 1.0</diffuse>
+            <specular>0.35 0.35 0.35 1.0</specular>
+          </material>
+        </visual>
+        <visual name="lidar_color_cap">
+          <pose>0 0 0.08 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.145</radius>
+              <length>0.035</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.15 0.45 1.0 1.0</ambient>
+            <diffuse>0.15 0.45 1.0 1.0</diffuse>
+          </material>
+        </visual>
+      </link>
+      <joint name="rear_left_lidar_joint" type="fixed">
+        <parent>base_link</parent>
+        <child>rear_left_lidar_link</child>
+      </joint>
+      <link name="rear_right_lidar_link">
+        <pose>-1.35 -0.45 0.47 0 0 -2.35619</pose>
+        <visual name="lidar_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.13</radius>
+              <length>0.14</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.05 0.05 0.05 1.0</diffuse>
+            <specular>0.35 0.35 0.35 1.0</specular>
+          </material>
+        </visual>
+        <visual name="lidar_color_cap">
+          <pose>0 0 0.08 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.145</radius>
+              <length>0.035</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>1.0 0.75 0.08 1.0</ambient>
+            <diffuse>1.0 0.75 0.08 1.0</diffuse>
+          </material>
+        </visual>
+      </link>
+      <joint name="rear_right_lidar_joint" type="fixed">
+        <parent>base_link</parent>
+        <child>rear_right_lidar_link</child>
+      </joint>
+    </model>
+
+    <model name="moving_vehicle_2">
+      <pose>-24.16 -38.69 0.4 0 0 -0.7297</pose>
+      <static>false</static>
+      <link name="base_link">
+        <inertial>
+          <mass>850.0</mass>
+          <inertia>
+            <ixx>116.0</ixx>
+            <ixy>0.0</ixy>
+            <ixz>0.0</ixz>
+            <iyy>684.0</iyy>
+            <iyz>0.0</iyz>
+            <izz>708.0</izz>
+          </inertia>
+        </inertial>
+        <collision name="body_collision">
+          <geometry>
+            <box>
+              <size>3.0 1.0 0.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <box>
+              <size>3.0 1.0 0.8</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.08 0.18 0.42 1.0</ambient>
+            <diffuse>0.12 0.34 0.85 1.0</diffuse>
+            <specular>0.18 0.22 0.35 1.0</specular>
+          </material>
+        </visual>
+        <visual name="front_marker">
+          <pose>1.525 0 0.15 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.05 0.85 0.12</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.95 0.95 0.15 1.0</ambient>
+            <diffuse>0.95 0.95 0.15 1.0</diffuse>
+          </material>
+        </visual>
+        <visual name="front_left_wheel_visual">
+          <pose>1.0 0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+        <visual name="front_right_wheel_visual">
+          <pose>1.0 -0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+        <visual name="rear_left_wheel_visual">
+          <pose>-1.0 0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+        <visual name="rear_right_wheel_visual">
+          <pose>-1.0 -0.68 -0.12 1.5708 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.28</radius>
+              <length>0.24</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.01 0.01 0.01 1.0</ambient>
+            <diffuse>0.01 0.01 0.01 1.0</diffuse>
+            <specular>0.25 0.25 0.25 1.0</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="crossing_pedestrian_1">
+      <pose>-16.81 -48.61 0.875 0 0 0.841</pose>
+      <static>false</static>
+      <link name="body_link">
+        <collision name="body_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.95 0.35 0.12 1</ambient>
+            <diffuse>0.95 0.35 0.12 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="crossing_pedestrian_2">
+      <pose>12.03 -74.41 0.875 0 0 0.841</pose>
+      <static>false</static>
+      <link name="body_link">
+        <collision name="body_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.2 0.85 0.95 1</ambient>
+            <diffuse>0.2 0.85 0.95 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="crossing_pedestrian_3">
+      <pose>50.27 -74.01 0.875 0 0 2.418</pose>
+      <static>false</static>
+      <link name="body_link">
+        <collision name="body_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.75 0.25 0.95 1</ambient>
+            <diffuse>0.75 0.25 0.95 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="crossing_pedestrian_4">
+      <pose>55.58 -37.05 0.875 0 0 -2.297</pose>
+      <static>false</static>
+      <link name="body_link">
+        <collision name="body_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.15 0.95 0.35 1</ambient>
+            <diffuse>0.15 0.95 0.35 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="crossing_pedestrian_5">
+      <pose>26.65 -11.35 0.875 0 0 -2.297</pose>
+      <static>false</static>
+      <link name="body_link">
+        <collision name="body_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.95 0.85 0.2 1</ambient>
+            <diffuse>0.95 0.85 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="crossing_pedestrian_6">
+      <pose>-9.74 -5.36 0.875 0 0 -0.719</pose>
+      <static>false</static>
+      <link name="body_link">
+        <collision name="body_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="body_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.22</radius>
+              <length>1.75</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.95 0.45 0.75 1</ambient>
+            <diffuse>0.95 0.45 0.75 1</diffuse>
           </material>
         </visual>
       </link>

@@ -115,7 +115,7 @@ def generate_launch_description():
                         "width": 1.0,
                         "height": 0.8,
                         "wheelbase": 2.0,
-                        "wheel_tread": 0.8,
+                        "wheel_tread": 1.36,
                     }
                 ],
             ),
@@ -132,7 +132,7 @@ def generate_launch_description():
                         "simulated_frame_id": "base_link",
                         "origin_frame_id": "map",
                         "wheel_base": 2.0,
-                        "wheel_tread": 0.8,
+                        "wheel_tread": 1.36,
                         "front_overhang": 0.5,
                         "rear_overhang": 0.5,
                         "left_overhang": 0.1,

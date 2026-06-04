@@ -167,6 +167,20 @@ def generate_launch_description():
                 ],
             ),
             Node(
+                package="agv_gazebo",
+                executable="dynamic_obstacle_simulator_node",
+                name="dynamic_obstacle_simulator",
+                output="screen",
+                parameters=[
+                    {
+                        "service_name": "/world/changxing_empty/set_pose",
+                        "update_rate": 20.0,
+                        "traffic_vehicle_speed": 1.5,
+                        "pedestrian_speed": 0.8,
+                    }
+                ],
+            ),
+            Node(
                 package="agv_map_visualizer",
                 executable="agv_vehicle_marker_publisher",
                 name="agv_vehicle_marker_publisher",
@@ -179,7 +193,7 @@ def generate_launch_description():
                         "width": 1.0,
                         "height": 0.8,
                         "wheelbase": 2.0,
-                        "wheel_tread": 0.8,
+                        "wheel_tread": 1.36,
                     }
                 ],
             ),

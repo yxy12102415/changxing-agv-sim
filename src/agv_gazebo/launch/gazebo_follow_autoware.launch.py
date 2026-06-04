@@ -110,6 +110,20 @@ def generate_launch_description():
                 ],
             ),
             Node(
+                package="agv_gazebo",
+                executable="dynamic_obstacle_simulator_node",
+                name="dynamic_obstacle_simulator",
+                output="screen",
+                parameters=[
+                    {
+                        "service_name": "/world/changxing_empty/set_pose",
+                        "update_rate": 20.0,
+                        "traffic_vehicle_speed": 1.5,
+                        "pedestrian_speed": 0.8,
+                    }
+                ],
+            ),
+            Node(
                 package="agv_map_visualizer",
                 executable="lidar_point_marker_publisher",
                 name="lidar_point_marker_publisher",

@@ -1,5 +1,6 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
@@ -33,6 +34,35 @@ double yaw_from_pose(const geometry_msgs::msg::Pose & pose)
     2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
 }
 
+geometry_msgs::msg::Quaternion quaternion_from_rpy(
+  const double roll, const double pitch, const double yaw)
+{
+  const double cr = std::cos(roll * 0.5);
+  const double sr = std::sin(roll * 0.5);
+  const double cp = std::cos(pitch * 0.5);
+  const double sp = std::sin(pitch * 0.5);
+  const double cy = std::cos(yaw * 0.5);
+  const double sy = std::sin(yaw * 0.5);
+
+  geometry_msgs::msg::Quaternion q;
+  q.w = cr * cp * cy + sr * sp * sy;
+  q.x = sr * cp * cy - cr * sp * sy;
+  q.y = cr * sp * cy + sr * cp * sy;
+  q.z = cr * cp * sy - sr * sp * cy;
+  return q;
+}
+
+geometry_msgs::msg::Quaternion multiply(
+  const geometry_msgs::msg::Quaternion & a, const geometry_msgs::msg::Quaternion & b)
+{
+  geometry_msgs::msg::Quaternion q;
+  q.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
+  q.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
+  q.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
+  q.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
+  return q;
+}
+
 geometry_msgs::msg::Point offset_point(
   const geometry_msgs::msg::Pose & pose, const double local_x, const double local_y,
   const double local_z)
@@ -43,6 +73,17 @@ geometry_msgs::msg::Point offset_point(
   point.y = pose.position.y + std::sin(yaw) * local_x + std::cos(yaw) * local_y;
   point.z = pose.position.z + local_z;
   return point;
+}
+
+geometry_msgs::msg::Pose offset_pose(
+  const geometry_msgs::msg::Pose & pose, const double local_x, const double local_y,
+  const double local_z, const double local_roll = 0.0, const double local_pitch = 0.0,
+  const double local_yaw = 0.0)
+{
+  geometry_msgs::msg::Pose out;
+  out.position = offset_point(pose, local_x, local_y, local_z);
+  out.orientation = multiply(pose.orientation, quaternion_from_rpy(local_roll, local_pitch, local_yaw));
+  return out;
 }
 
 Marker base_marker(
@@ -75,10 +116,13 @@ public:
     width_ = declare_parameter<double>("width", 1.0);
     height_ = declare_parameter<double>("height", 0.8);
     wheelbase_ = declare_parameter<double>("wheelbase", 2.0);
-    wheel_tread_ = declare_parameter<double>("wheel_tread", 0.8);
-    wheel_length_ = declare_parameter<double>("wheel_length", 0.75);
-    wheel_width_ = declare_parameter<double>("wheel_width", 0.28);
-    wheel_height_ = declare_parameter<double>("wheel_height", 0.42);
+    wheel_tread_ = declare_parameter<double>("wheel_tread", 1.36);
+    wheel_radius_ = declare_parameter<double>("wheel_radius", 0.28);
+    wheel_width_ = declare_parameter<double>("wheel_width", 0.24);
+    lidar_radius_ = declare_parameter<double>("lidar_radius", 0.13);
+    lidar_height_ = declare_parameter<double>("lidar_height", 0.14);
+    lidar_cap_radius_ = declare_parameter<double>("lidar_cap_radius", 0.145);
+    lidar_cap_height_ = declare_parameter<double>("lidar_cap_height", 0.035);
 
     pub_marker_ = create_publisher<MarkerArray>(output_topic_, rclcpp::QoS{1});
     sub_odom_ = create_subscription<Odometry>(
@@ -103,50 +147,67 @@ private:
     body.scale.x = length_;
     body.scale.y = width_;
     body.scale.z = height_;
-    body.color = color(0.05F, 0.35F, 0.95F, 0.78F);
+    body.color = color(0.08F, 0.42F, 0.50F, 0.95F);
 
-    Marker cabin = base_marker(frame, stamp, "agv_cabin", 1, Marker::CUBE);
-    cabin.pose = pose;
-    cabin.pose.position = offset_point(pose, length_ * 0.08, 0.0, height_ + 0.28);
-    cabin.scale.x = length_ * 0.42;
-    cabin.scale.y = width_ * 0.72;
-    cabin.scale.z = 0.55;
-    cabin.color = color(0.05F, 0.75F, 0.95F, 0.62F);
-
-    Marker arrow = base_marker(frame, stamp, "agv_heading", 2, Marker::ARROW);
-    arrow.points.push_back(offset_point(pose, length_ * 0.08, 0.0, height_ + 0.75));
-    arrow.points.push_back(offset_point(pose, length_ * 0.55, 0.0, height_ + 0.75));
-    arrow.scale.x = 0.12;
-    arrow.scale.y = 0.28;
-    arrow.scale.z = 0.32;
-    arrow.color = color(1.0F, 0.72F, 0.12F, 0.95F);
-
-    Marker axle_lines = base_marker(frame, stamp, "agv_axles", 3, Marker::LINE_LIST);
-    axle_lines.scale.x = 0.07;
-    axle_lines.color = color(0.95F, 0.95F, 0.95F, 0.9F);
-    for (const double x : {-wheelbase_ * 0.5, wheelbase_ * 0.5}) {
-      axle_lines.points.push_back(offset_point(pose, x, -wheel_tread_ * 0.58, 0.22));
-      axle_lines.points.push_back(offset_point(pose, x, wheel_tread_ * 0.58, 0.22));
-    }
+    Marker front_marker = base_marker(frame, stamp, "agv_front_marker", 1, Marker::CUBE);
+    front_marker.pose = offset_pose(pose, length_ * 0.5 + 0.025, 0.0, 0.15);
+    front_marker.scale.x = 0.05;
+    front_marker.scale.y = 0.85;
+    front_marker.scale.z = 0.12;
+    front_marker.color = color(0.95F, 0.95F, 0.15F, 0.96F);
 
     MarkerArray markers;
     markers.markers.push_back(body);
-    markers.markers.push_back(cabin);
-    markers.markers.push_back(arrow);
-    markers.markers.push_back(axle_lines);
+    markers.markers.push_back(front_marker);
 
     int32_t wheel_id = 10;
     for (const double x : {-wheelbase_ * 0.5, wheelbase_ * 0.5}) {
       for (const double y : {-wheel_tread_ * 0.5, wheel_tread_ * 0.5}) {
-        Marker wheel = base_marker(frame, stamp, "agv_wheels", wheel_id++, Marker::CUBE);
-        wheel.pose = pose;
-        wheel.pose.position = offset_point(pose, x, y, wheel_height_ * 0.5);
-        wheel.scale.x = wheel_length_;
-        wheel.scale.y = wheel_width_;
-        wheel.scale.z = wheel_height_;
-        wheel.color = color(0.04F, 0.04F, 0.04F, 0.96F);
+        Marker wheel = base_marker(frame, stamp, "agv_wheels", wheel_id++, Marker::CYLINDER);
+        wheel.pose = offset_pose(pose, x, y, wheel_radius_, 1.5708, 0.0, 0.0);
+        wheel.scale.x = wheel_radius_ * 2.0;
+        wheel.scale.y = wheel_radius_ * 2.0;
+        wheel.scale.z = wheel_width_;
+        wheel.color = color(0.01F, 0.01F, 0.01F, 0.98F);
         markers.markers.push_back(wheel);
       }
+    }
+
+    struct LidarVisual
+    {
+      double x;
+      double y;
+      double yaw;
+      float r;
+      float g;
+      float b;
+    };
+    const std::array<LidarVisual, 4> lidars{{
+      {1.35, 0.45, 0.785398, 1.0F, 0.12F, 0.08F},
+      {1.35, -0.45, -0.785398, 0.1F, 0.95F, 0.15F},
+      {-1.35, 0.45, 2.35619, 0.15F, 0.45F, 1.0F},
+      {-1.35, -0.45, -2.35619, 1.0F, 0.75F, 0.08F},
+    }};
+
+    int32_t lidar_id = 20;
+    for (const auto & lidar : lidars) {
+      Marker shell = base_marker(frame, stamp, "agv_lidar_shells", lidar_id++, Marker::CYLINDER);
+      shell.pose = offset_pose(pose, lidar.x, lidar.y, height_ + lidar_height_ * 0.5, 0.0, 0.0, lidar.yaw);
+      shell.scale.x = lidar_radius_ * 2.0;
+      shell.scale.y = lidar_radius_ * 2.0;
+      shell.scale.z = lidar_height_;
+      shell.color = color(0.05F, 0.05F, 0.05F, 0.98F);
+      markers.markers.push_back(shell);
+
+      Marker cap = base_marker(frame, stamp, "agv_lidar_caps", lidar_id++, Marker::CYLINDER);
+      cap.pose = offset_pose(
+        pose, lidar.x, lidar.y, height_ + lidar_height_ + lidar_cap_height_ * 0.5, 0.0, 0.0,
+        lidar.yaw);
+      cap.scale.x = lidar_cap_radius_ * 2.0;
+      cap.scale.y = lidar_cap_radius_ * 2.0;
+      cap.scale.z = lidar_cap_height_;
+      cap.color = color(lidar.r, lidar.g, lidar.b, 0.96F);
+      markers.markers.push_back(cap);
     }
 
     pub_marker_->publish(markers);
@@ -160,9 +221,12 @@ private:
   double height_;
   double wheelbase_;
   double wheel_tread_;
-  double wheel_length_;
+  double wheel_radius_;
   double wheel_width_;
-  double wheel_height_;
+  double lidar_radius_;
+  double lidar_height_;
+  double lidar_cap_radius_;
+  double lidar_cap_height_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_marker_;
   rclcpp::Subscription<Odometry>::SharedPtr sub_odom_;
 };

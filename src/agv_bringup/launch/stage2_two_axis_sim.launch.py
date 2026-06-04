@@ -113,7 +113,7 @@ def generate_launch_description():
                         "width": 1.0,
                         "height": 0.8,
                         "wheelbase": 2.0,
-                        "wheel_tread": 0.8,
+                        "wheel_tread": 1.36,
                     }
                 ],
             ),

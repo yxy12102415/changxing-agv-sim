@@ -30,6 +30,16 @@ ament_target_dependencies(gnss_imu_simulator_node
   sensor_msgs
 )
 
+add_executable(dynamic_obstacle_simulator_node
+  src/dynamic_obstacle_simulator_node.cpp
+)
+target_compile_features(dynamic_obstacle_simulator_node PUBLIC cxx_std_17)
+ament_target_dependencies(dynamic_obstacle_simulator_node
+  geometry_msgs
+  rclcpp
+  ros_gz_interfaces
+)
+
 install(
   DIRECTORY config launch models scripts worlds
   DESTINATION share/${PROJECT_NAME}
@@ -39,6 +49,7 @@ install(
   TARGETS
     kinematic_state_to_gazebo_node
     gnss_imu_simulator_node
+    dynamic_obstacle_simulator_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
