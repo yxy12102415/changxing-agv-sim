@@ -6,6 +6,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(autoware_adapi_v1_msgs REQUIRED)
 find_package(autoware_control_msgs REQUIRED)
 find_package(autoware_simple_planning_simulator REQUIRED)
 find_package(autoware_vehicle_msgs REQUIRED)
@@ -26,6 +27,7 @@ target_include_directories(agv_two_axis_simulator_node PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 ament_target_dependencies(agv_two_axis_simulator_node
+  autoware_adapi_v1_msgs
   autoware_control_msgs
   autoware_simple_planning_simulator
   autoware_vehicle_msgs

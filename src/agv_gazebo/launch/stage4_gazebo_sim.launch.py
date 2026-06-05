@@ -206,7 +206,8 @@ def generate_launch_description():
                     {
                         "output_topic": "/visualization/lidar_point_markers",
                         "point_size": 0.07,
-                        "sample_step": 18,
+                        "sample_step": 8,
+                        "max_points_per_cloud": 8000,
                     }
                 ],
             ),
