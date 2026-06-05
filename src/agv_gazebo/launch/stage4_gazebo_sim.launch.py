@@ -49,10 +49,10 @@ def generate_launch_description():
         "/world/changxing_empty/set_pose@ros_gz_interfaces/srv/SetEntityPose",
     ]
     lidar_static_transforms = [
-        ("1.35", "0.45", "0.87", "0.785398", "ego_agv/front_left_lidar_link/front_left_lidar"),
-        ("1.35", "-0.45", "0.87", "-0.785398", "ego_agv/front_right_lidar_link/front_right_lidar"),
-        ("-1.35", "0.45", "0.87", "2.35619", "ego_agv/rear_left_lidar_link/rear_left_lidar"),
-        ("-1.35", "-0.45", "0.87", "-2.35619", "ego_agv/rear_right_lidar_link/rear_right_lidar"),
+        ("1.35", "0.45", "0.47", "0.785398", "ego_agv/front_left_lidar_link/front_left_lidar"),
+        ("1.35", "-0.45", "0.47", "-0.785398", "ego_agv/front_right_lidar_link/front_right_lidar"),
+        ("-1.35", "0.45", "0.47", "2.35619", "ego_agv/rear_left_lidar_link/rear_left_lidar"),
+        ("-1.35", "-0.45", "0.47", "-2.35619", "ego_agv/rear_right_lidar_link/rear_right_lidar"),
     ]
 
     return LaunchDescription(
