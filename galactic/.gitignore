@@ -1,6 +1,9 @@
 build/
 install/
 log/
+build_galactic/
+install_galactic/
+log_galactic/
 
 __pycache__/
 *.pyc

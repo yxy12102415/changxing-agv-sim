@@ -231,7 +231,7 @@ def generate_launch_description():
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(gz_launch),
-                launch_arguments={gazebo_packages["sim_args"]: ["-r -v 4 ", world_path]}.items(),
+                launch_arguments={gazebo_packages["sim_args"]: ["-r -v 2 ", world_path]}.items(),
             ),
             Node(
                 package=gazebo_packages["bridge_package"],

@@ -22,16 +22,17 @@ From the host:
 
 ```bash
 cd galactic
-./galactic/docker_galatic.sh
+./sim.sh
 ```
 
-Inside the Docker container:
+If the Docker image has not been built yet:
 
 ```bash
-cd /workspace/AGV_sim_ws
-colcon --log-base log_galactic build \
-  --build-base build_galactic \
-  --install-base install_galactic \
-  --symlink-install
-./galactic/sim_galactic.sh
+cd galactic
+./galactic/tools/galactic_docker.sh build
+./sim.sh
 ```
+
+`galactic/sim.sh` runs from the host, starts the Galactic Docker container with
+GUI support, builds the workspace on first run if `install_galactic` is missing,
+and launches the standalone Gazebo/RViz simulation.
