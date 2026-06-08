@@ -54,6 +54,7 @@ public:
     sample_step_ = declare_parameter<int>("sample_step", 24);
     max_points_ = declare_parameter<int>("max_points_per_cloud", 2500);
     point_size_ = declare_parameter<double>("point_size", 0.07);
+    marker_lifetime_ = declare_parameter<double>("marker_lifetime", 2.0);
 
     pub_ = create_publisher<MarkerArray>(output_topic_, rclcpp::QoS{1});
 
@@ -103,7 +104,7 @@ private:
     marker.scale.y = point_size_;
     marker.scale.z = point_size_;
     marker.color = color(config.r, config.g, config.b, 0.95F);
-    marker.lifetime = rclcpp::Duration::from_seconds(0.4);
+    marker.lifetime = rclcpp::Duration::from_seconds(std::max(0.0, marker_lifetime_));
 
     const size_t point_count = static_cast<size_t>(msg.width) * static_cast<size_t>(msg.height);
     const size_t step = static_cast<size_t>(std::max(1, sample_step_));
@@ -136,6 +137,7 @@ private:
   int sample_step_;
   int max_points_;
   double point_size_;
+  double marker_lifetime_;
   std::unordered_map<std::string, CloudConfig> configs_;
   std::unordered_map<std::string, int32_t> ids_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_;

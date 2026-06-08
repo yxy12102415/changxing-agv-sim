@@ -1,9 +1,8 @@
 # AGV Simulation Workspace
 
-ROS 2 Humble workspace for the Changxing AGV simulation. It contains the Gazebo
-world, Lanelet2 map, RViz visualization helpers, a two-axis AGV vehicle model,
-and launch files for running either standalone simulation or Autoware planning
-and control against the same Gazebo scene.
+ROS 2 Galactic Docker workspace for the Changxing AGV simulation. It keeps the
+standalone Gazebo/RViz simulation runnable in a Galactic container while the
+host stays on Humble.
 
 ## Contents
 
@@ -17,24 +16,39 @@ and control against the same Gazebo scene.
 
 ## Build
 
+The usual path is to let `sim.sh` build on first run. To build manually:
+
 ```bash
-source /opt/ros/humble/setup.bash
-cd /data/projects/AGV_sim_galactic
-colcon build --symlink-install
-source install/setup.bash
+cd /data/projects/changxing-agv-sim/galactic
+./galactic/tools/galactic_docker.sh build
+./docker.sh
+```
+
+Inside the container:
+
+```bash
+cd /workspace/AGV_sim_ws
+colcon --log-base log_galactic build \
+  --build-base build_galactic \
+  --install-base install_galactic \
+  --symlink-install
 ```
 
 The workspace is normally built with `--symlink-install`, so launch/config edits
-under `src/` are reflected through `install/` without rebuilding. Rebuild after
-changing C++ code.
+under `src/` are reflected through `install_galactic/` without rebuilding.
+Rebuild after changing C++ code.
 
 ## Run Standalone Gazebo
 
+From the host:
+
 ```bash
+cd /data/projects/changxing-agv-sim/galactic
 ./sim.sh
 ```
 
-This sources ROS Humble and this workspace, then launches:
+`sim.sh` starts the Galactic Docker container with GUI support, rebuilds the
+workspace on first run if `install_galactic` is missing, then launches:
 
 ```bash
 ros2 launch agv_gazebo agv_gazebo_sim.launch.py
@@ -51,23 +65,29 @@ Useful launch arguments:
 ./sim.sh steering_mode:=crab
 ```
 
+To stop the running simulation container:
+
+```bash
+sg docker -c 'docker rm -f agv-sim-galactic-sim'
+```
+
+To enter the Galactic container without launching simulation:
+
+```bash
+./docker.sh
+./docker.sh gui
+./docker.sh root
+```
+
 ## Run With Autoware
 
-```bash
-./autosim.sh
-```
+Autoware integration is not the primary Galactic Docker path yet. The current
+Galactic target is the standalone Gazebo/RViz chain; keep Humble as the
+Autoware reference until the Galactic Autoware interfaces are collected and
+adapted.
 
-This additionally sources `/data/projects/autoware/install/setup.bash` and
-launches:
-
-```bash
-ros2 launch agv_bringup autoware_gazebo_sim.launch.py
-```
-
-`autosim.sh` includes the same Gazebo launch used by `sim.sh`, then starts
-Autoware planning, control, API, and system modules. Autoware vehicle and vehicle
-interface launches are disabled because the local `agv_two_axis_simulator_node`
-provides the simulated vehicle interface.
+There is no Galactic `autosim.sh` one-command entry yet. The Humble workspace is
+still the reference for Autoware planning/control integration.
 
 ## Control Interfaces
 
@@ -118,8 +138,8 @@ starting a new simulation:
 kill <pid>
 ```
 
-Avoid running `sim.sh` and `autosim.sh` at the same time unless they use separate
-ROS/Gazebo domains and worlds.
+Avoid running multiple `sim.sh` instances at the same time unless they use
+separate ROS/Gazebo domains and worlds.
 
 ## Lidar And RViz Notes
 
@@ -164,11 +184,18 @@ Migration guide:
 less galactic/ROS2_GALACTIC_MIGRATION.md
 ```
 
-Build and enter the Galactic Docker environment:
+Build and run the Galactic Docker simulation:
 
 ```bash
 ./galactic/tools/galactic_docker.sh build
-./galactic/tools/galactic_docker.sh shell
+./sim.sh
+```
+
+Enter the Galactic Docker environment without launching simulation:
+
+```bash
+./galactic/tools/galactic_docker.sh build
+./docker.sh
 ```
 
 Run `shell` only after `build` completes successfully. If Docker Hub times out,
@@ -204,10 +231,10 @@ colcon build --symlink-install \
   --log-base log_galactic
 ```
 
-For Gazebo/RViz GUI testing after the build works, use:
+For an interactive GUI container without auto-launching the sim, use:
 
 ```bash
-./galactic/tools/galactic_docker.sh gui
+./docker.sh gui
 ```
 
 Interface collection script for a Galactic vehicle/development machine:

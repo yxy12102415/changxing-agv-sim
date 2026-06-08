@@ -88,6 +88,7 @@ else()
     tf2_msgs
     tf2_ros
   )
+  list(APPEND AGV_VEHICLE_MODEL_TARGETS agv_two_axis_simulator_node)
 endif()
 
 install(

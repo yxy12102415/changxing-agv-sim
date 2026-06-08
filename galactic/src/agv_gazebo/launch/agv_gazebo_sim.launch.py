@@ -281,13 +281,13 @@ def generate_launch_description():
             SetEnvironmentVariable(name="IGN_PARTITION", value="agv_sim"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(gz_launch),
-                launch_arguments={gazebo_packages["sim_args"]: ["-r -v 4 ", world_path]}.items(),
+                launch_arguments={gazebo_packages["sim_args"]: ["-r -v 2 ", world_path]}.items(),
                 condition=IfCondition(use_gazebo_gui),
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(gz_launch),
                 launch_arguments={
-                    gazebo_packages["sim_args"]: ["-r -s -v 4 ", world_path]
+                    gazebo_packages["sim_args"]: ["-r -s -v 2 ", world_path]
                 }.items(),
                 condition=UnlessCondition(use_gazebo_gui),
             ),
