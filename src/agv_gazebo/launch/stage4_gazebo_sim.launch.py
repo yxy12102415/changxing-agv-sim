@@ -1,5 +1,8 @@
 import os
+import shutil
+import tempfile
 
+from ament_index_python.packages import PackageNotFoundError
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -13,12 +16,92 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
+def gazebo_ros_packages():
+    try:
+        get_package_share_directory("ros_gz_sim")
+        return {
+            "sim_package": "ros_gz_sim",
+            "sim_launch": "gz_sim.launch.py",
+            "sim_args": "gz_args",
+            "bridge_package": "ros_gz_bridge",
+            "interfaces_package": "ros_gz_interfaces",
+            "msgs_package": "gz.msgs",
+            "supports_service_bridge": True,
+        }
+    except PackageNotFoundError:
+        return {
+            "sim_package": "ros_ign_gazebo",
+            "sim_launch": "ign_gazebo.launch.py",
+            "sim_args": "ign_args",
+            "bridge_package": "ros_ign_bridge",
+            "interfaces_package": "ros_ign_interfaces",
+            "msgs_package": "ignition.msgs",
+            "supports_service_bridge": False,
+        }
+
+
+def ignition_compat_paths(world_path, models_path):
+    replacements = {
+        '<sdf version="1.9">': '<sdf version="1.8">',
+        'filename="gz-sim-physics-system" name="gz::sim::systems::Physics"':
+            'filename="libignition-gazebo-physics-system.so" '
+            'name="ignition::gazebo::systems::Physics"',
+        'filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"':
+            'filename="libignition-gazebo-user-commands-system.so" '
+            'name="ignition::gazebo::systems::UserCommands"',
+        'filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"':
+            'filename="libignition-gazebo-scene-broadcaster-system.so" '
+            'name="ignition::gazebo::systems::SceneBroadcaster"',
+        'filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors"':
+            'filename="libignition-gazebo-sensors-system.so" '
+            'name="ignition::gazebo::systems::Sensors"',
+    }
+    with open(world_path, "r", encoding="utf-8") as src:
+        world = src.read()
+    for old, new in replacements.items():
+        world = world.replace(old, new)
+
+    patched_path = os.path.join(tempfile.gettempdir(), "agv_changxing_empty_ignition.sdf")
+    with open(patched_path, "w", encoding="utf-8") as dst:
+        dst.write(world)
+
+    patched_models_path = os.path.join(tempfile.gettempdir(), "agv_galactic_models")
+    patched_model_path = os.path.join(patched_models_path, "agv_with_lidars")
+    source_model_path = os.path.join(models_path, "agv_with_lidars")
+    if os.path.exists(patched_model_path):
+        shutil.rmtree(patched_model_path)
+    shutil.copytree(source_model_path, patched_model_path)
+    model_sdf_path = os.path.join(patched_model_path, "model.sdf")
+    with open(model_sdf_path, "r", encoding="utf-8") as src:
+        model = src.read().replace('<sdf version="1.9">', '<sdf version="1.8">')
+    with open(model_sdf_path, "w", encoding="utf-8") as dst:
+        dst.write(model)
+
+    return patched_path, os.pathsep.join([patched_models_path, models_path])
+
+
 def generate_launch_description():
     map_path = LaunchConfiguration("map_path")
     projector_info_path = LaunchConfiguration("projector_info_path")
     initial_x = LaunchConfiguration("initial_x")
     initial_y = LaunchConfiguration("initial_y")
     initial_yaw = LaunchConfiguration("initial_yaw")
+    imu_x = LaunchConfiguration("imu_x")
+    imu_y = LaunchConfiguration("imu_y")
+    imu_z = LaunchConfiguration("imu_z")
+    imu_yaw = LaunchConfiguration("imu_yaw")
+    imu_pitch = LaunchConfiguration("imu_pitch")
+    imu_roll = LaunchConfiguration("imu_roll")
+    imu_frame_id = LaunchConfiguration("imu_frame_id")
+    gnss_x = LaunchConfiguration("gnss_x")
+    gnss_y = LaunchConfiguration("gnss_y")
+    gnss_z = LaunchConfiguration("gnss_z")
+    gnss_yaw = LaunchConfiguration("gnss_yaw")
+    gnss_pitch = LaunchConfiguration("gnss_pitch")
+    gnss_roll = LaunchConfiguration("gnss_roll")
+    gnss_frame_id = LaunchConfiguration("gnss_frame_id")
+    imu_topic = LaunchConfiguration("imu_topic")
+    gnss_topic = LaunchConfiguration("gnss_topic")
     reference_latitude = LaunchConfiguration("reference_latitude")
     reference_longitude = LaunchConfiguration("reference_longitude")
     reference_altitude = LaunchConfiguration("reference_altitude")
@@ -31,28 +114,63 @@ def generate_launch_description():
     default_projector_info_path = PathJoinSubstitution(
         [FindPackageShare("agv_maps"), "map", "map_projector_info.yaml"]
     )
+    gazebo_packages = gazebo_ros_packages()
+    if not gazebo_packages["supports_service_bridge"]:
+        world_path, models_path = ignition_compat_paths(world_path, models_path)
 
     gz_launch = PathJoinSubstitution(
-        [FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"]
+        [
+            FindPackageShare(gazebo_packages["sim_package"]),
+            "launch",
+            gazebo_packages["sim_launch"],
+        ]
     )
+    set_pose_service_type = f"{gazebo_packages['interfaces_package']}/srv/SetEntityPose"
+    gazebo_msgs = gazebo_packages["msgs_package"]
 
     lidar_bridges = [
-        "/sensing/lidar/front_left@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
-        "/sensing/lidar/front_left/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
-        "/sensing/lidar/front_right@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
-        "/sensing/lidar/front_right/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
-        "/sensing/lidar/rear_left@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
-        "/sensing/lidar/rear_left/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
-        "/sensing/lidar/rear_right@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
-        "/sensing/lidar/rear_right/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
-        "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-        "/world/changxing_empty/set_pose@ros_gz_interfaces/srv/SetEntityPose",
+        f"/sensing/lidar/front_left@sensor_msgs/msg/LaserScan[{gazebo_msgs}.LaserScan",
+        f"/sensing/lidar/front_left/points@sensor_msgs/msg/PointCloud2[{gazebo_msgs}.PointCloudPacked",
+        f"/sensing/lidar/front_right@sensor_msgs/msg/LaserScan[{gazebo_msgs}.LaserScan",
+        f"/sensing/lidar/front_right/points@sensor_msgs/msg/PointCloud2[{gazebo_msgs}.PointCloudPacked",
+        f"/sensing/lidar/rear_left@sensor_msgs/msg/LaserScan[{gazebo_msgs}.LaserScan",
+        f"/sensing/lidar/rear_left/points@sensor_msgs/msg/PointCloud2[{gazebo_msgs}.PointCloudPacked",
+        f"/sensing/lidar/rear_right@sensor_msgs/msg/LaserScan[{gazebo_msgs}.LaserScan",
+        f"/sensing/lidar/rear_right/points@sensor_msgs/msg/PointCloud2[{gazebo_msgs}.PointCloudPacked",
+        f"/clock@rosgraph_msgs/msg/Clock[{gazebo_msgs}.Clock",
+    ]
+    if gazebo_packages["supports_service_bridge"]:
+        lidar_bridges.append(
+            f"/world/changxing_empty/set_pose@{set_pose_service_type}"
+            f"@{gazebo_msgs}.Pose@{gazebo_msgs}.Boolean"
+        )
+    lidar_calibration_defaults = [
+        ("rslidar2", "1.35", "-0.45", "0.47", "-0.785398", "0.0", "0.0"),
+        ("hesai_left_front", "1.35", "0.45", "0.47", "0.785398", "0.0", "0.0"),
+        ("rslidar4", "-1.35", "0.45", "0.47", "2.35619", "0.0", "0.0"),
+        ("hesai_right_rear", "-1.35", "-0.45", "0.47", "-2.35619", "0.0", "0.0"),
     ]
     lidar_static_transforms = [
-        ("1.35", "0.45", "0.47", "0.785398", "ego_agv/front_left_lidar_link/front_left_lidar"),
-        ("1.35", "-0.45", "0.47", "-0.785398", "ego_agv/front_right_lidar_link/front_right_lidar"),
-        ("-1.35", "0.45", "0.47", "2.35619", "ego_agv/rear_left_lidar_link/rear_left_lidar"),
-        ("-1.35", "-0.45", "0.47", "-2.35619", "ego_agv/rear_right_lidar_link/rear_right_lidar"),
+        (
+            LaunchConfiguration(f"{frame_id}_x"),
+            LaunchConfiguration(f"{frame_id}_y"),
+            LaunchConfiguration(f"{frame_id}_z"),
+            LaunchConfiguration(f"{frame_id}_yaw"),
+            LaunchConfiguration(f"{frame_id}_pitch"),
+            LaunchConfiguration(f"{frame_id}_roll"),
+            frame_id,
+        )
+        for frame_id, *_ in lidar_calibration_defaults
+    ]
+    lidar_frame_republishers = [
+        ("/sim/lidar/rslidar_points_2_raw", "/rslidar_points_2", "rslidar2"),
+        ("/sim/lidar/hesai_left_front_raw", "/hesai_left_front", "hesai_left_front"),
+        ("/sim/lidar/rslidar_points_4_raw", "/rslidar_points_4", "rslidar4"),
+        ("/sim/lidar/hesai_right_rear_raw", "/hesai_right_rear", "hesai_right_rear"),
+    ]
+    sensor_static_transforms = [
+        (imu_x, imu_y, imu_z, imu_yaw, imu_pitch, imu_roll, imu_frame_id, "imu_tf"),
+        (gnss_x, gnss_y, gnss_z, gnss_yaw, gnss_pitch, gnss_roll, gnss_frame_id, "gnss_tf"),
     ]
 
     return LaunchDescription(
@@ -64,6 +182,34 @@ def generate_launch_description():
             DeclareLaunchArgument("initial_x", default_value="0.0674"),
             DeclareLaunchArgument("initial_y", default_value="-57.6716"),
             DeclareLaunchArgument("initial_yaw", default_value="-0.7297"),
+            DeclareLaunchArgument("imu_x", default_value="0.0"),
+            DeclareLaunchArgument("imu_y", default_value="0.0"),
+            DeclareLaunchArgument("imu_z", default_value="0.60"),
+            DeclareLaunchArgument("imu_yaw", default_value="0.0"),
+            DeclareLaunchArgument("imu_pitch", default_value="0.0"),
+            DeclareLaunchArgument("imu_roll", default_value="0.0"),
+            DeclareLaunchArgument("imu_frame_id", default_value="imu_link"),
+            DeclareLaunchArgument("gnss_x", default_value="0.0"),
+            DeclareLaunchArgument("gnss_y", default_value="0.0"),
+            DeclareLaunchArgument("gnss_z", default_value="0.95"),
+            DeclareLaunchArgument("gnss_yaw", default_value="0.0"),
+            DeclareLaunchArgument("gnss_pitch", default_value="0.0"),
+            DeclareLaunchArgument("gnss_roll", default_value="0.0"),
+            DeclareLaunchArgument("gnss_frame_id", default_value="gnss_link"),
+            *[
+                DeclareLaunchArgument(f"{frame_id}_{axis}", default_value=default_value)
+                for frame_id, x, y, z, yaw, pitch, roll in lidar_calibration_defaults
+                for axis, default_value in (
+                    ("x", x),
+                    ("y", y),
+                    ("z", z),
+                    ("yaw", yaw),
+                    ("pitch", pitch),
+                    ("roll", roll),
+                )
+            ],
+            DeclareLaunchArgument("imu_topic", default_value="/chnav/imu/data"),
+            DeclareLaunchArgument("gnss_topic", default_value="/chnav/fix"),
             DeclareLaunchArgument("reference_latitude", default_value="31.2304"),
             DeclareLaunchArgument("reference_longitude", default_value="121.4737"),
             DeclareLaunchArgument("reference_altitude", default_value="0.0"),
@@ -75,17 +221,47 @@ def generate_launch_description():
                     EnvironmentVariable("GZ_SIM_RESOURCE_PATH", default_value=""),
                 ],
             ),
+            SetEnvironmentVariable(
+                name="IGN_GAZEBO_RESOURCE_PATH",
+                value=[
+                    models_path,
+                    os.pathsep,
+                    EnvironmentVariable("IGN_GAZEBO_RESOURCE_PATH", default_value=""),
+                ],
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(gz_launch),
-                launch_arguments={"gz_args": ["-r -v 4 ", world_path]}.items(),
+                launch_arguments={gazebo_packages["sim_args"]: ["-r -v 4 ", world_path]}.items(),
             ),
             Node(
-                package="ros_gz_bridge",
+                package=gazebo_packages["bridge_package"],
                 executable="parameter_bridge",
                 name="agv_lidar_bridge",
                 output="screen",
                 arguments=lidar_bridges,
+                remappings=[
+                    ("/sensing/lidar/front_left/points", "/sim/lidar/hesai_left_front_raw"),
+                    ("/sensing/lidar/front_right/points", "/sim/lidar/rslidar_points_2_raw"),
+                    ("/sensing/lidar/rear_left/points", "/sim/lidar/rslidar_points_4_raw"),
+                    ("/sensing/lidar/rear_right/points", "/sim/lidar/hesai_right_rear_raw"),
+                ],
             ),
+            *[
+                Node(
+                    package="agv_gazebo",
+                    executable="pointcloud_frame_republisher_node",
+                    name=f"{frame_id}_frame_republisher",
+                    output="screen",
+                    parameters=[
+                        {
+                            "input_topic": input_topic,
+                            "output_topic": output_topic,
+                            "frame_id": frame_id,
+                        }
+                    ],
+                )
+                for input_topic, output_topic, frame_id in lidar_frame_republishers
+            ],
             Node(
                 package="autoware_map_projection_loader",
                 executable="autoware_map_projection_loader_node",
@@ -120,7 +296,7 @@ def generate_launch_description():
             ),
             Node(
                 package="agv_vehicle_model",
-                executable="agv_two_axis_simulator_node",
+                executable="agv_standalone_simulator_node",
                 name="agv_two_axis_simulator",
                 output="screen",
                 parameters=[
@@ -156,10 +332,10 @@ def generate_launch_description():
                 parameters=[
                     {
                         "odom_topic": "/localization/kinematic_state",
-                        "imu_topic": "/sensing/imu/imu_data",
-                        "gnss_topic": "/sensing/gnss/nav_sat_fix",
-                        "imu_frame_id": "base_link",
-                        "gnss_frame_id": "base_link",
+                        "imu_topic": imu_topic,
+                        "gnss_topic": gnss_topic,
+                        "imu_frame_id": imu_frame_id,
+                        "gnss_frame_id": gnss_frame_id,
                         "reference_latitude": reference_latitude,
                         "reference_longitude": reference_longitude,
                         "reference_altitude": reference_altitude,
@@ -222,13 +398,32 @@ def generate_launch_description():
                         y,
                         z,
                         yaw,
-                        "0.0",
-                        "0.0",
+                        pitch,
+                        roll,
                         "base_link",
                         child_frame,
                     ],
                 )
-                for x, y, z, yaw, child_frame in lidar_static_transforms
+                for x, y, z, yaw, pitch, roll, child_frame in lidar_static_transforms
+            ],
+            *[
+                Node(
+                    package="tf2_ros",
+                    executable="static_transform_publisher",
+                    name=node_name,
+                    output="screen",
+                    arguments=[
+                        x,
+                        y,
+                        z,
+                        yaw,
+                        pitch,
+                        roll,
+                        "base_link",
+                        child_frame,
+                    ],
+                )
+                for x, y, z, yaw, pitch, roll, child_frame, node_name in sensor_static_transforms
             ],
         ]
     )

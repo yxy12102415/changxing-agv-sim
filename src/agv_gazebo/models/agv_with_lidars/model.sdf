@@ -133,8 +133,8 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>1.0 0.12 0.08 1.0</ambient>
-          <diffuse>1.0 0.12 0.08 1.0</diffuse>
+          <ambient>0.1 0.95 0.15 1.0</ambient>
+          <diffuse>0.1 0.95 0.15 1.0</diffuse>
         </material>
       </visual>
       <sensor name="front_left_lidar" type="gpu_lidar">
@@ -151,13 +151,13 @@
             <vertical>
               <samples>32</samples>
               <resolution>1</resolution>
-              <min_angle>-0.959931</min_angle>
+              <min_angle>-0.279253</min_angle>
               <max_angle>0.261799</max_angle>
             </vertical>
           </scan>
           <range>
-            <min>0.2</min>
-            <max>150.0</max>
+            <min>0.08</min>
+            <max>120.0</max>
             <resolution>0.01</resolution>
           </range>
         </lidar>
@@ -195,8 +195,8 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>0.1 0.95 0.15 1.0</ambient>
-          <diffuse>0.1 0.95 0.15 1.0</diffuse>
+          <ambient>1.0 0.12 0.08 1.0</ambient>
+          <diffuse>1.0 0.12 0.08 1.0</diffuse>
         </material>
       </visual>
       <sensor name="front_right_lidar" type="gpu_lidar">
@@ -213,13 +213,13 @@
             <vertical>
               <samples>32</samples>
               <resolution>1</resolution>
-              <min_angle>-0.279253</min_angle>
+              <min_angle>-0.959931</min_angle>
               <max_angle>0.261799</max_angle>
             </vertical>
           </scan>
           <range>
-            <min>0.08</min>
-            <max>120.0</max>
+            <min>0.2</min>
+            <max>150.0</max>
             <resolution>0.01</resolution>
           </range>
         </lidar>

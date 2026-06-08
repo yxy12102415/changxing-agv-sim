@@ -58,10 +58,10 @@ public:
     pub_ = create_publisher<MarkerArray>(output_topic_, rclcpp::QoS{1});
 
     const std::vector<CloudConfig> clouds{
-      {"/sensing/lidar/front_left/points", "front_left_lidar_points", 1.0F, 0.05F, 0.05F},
-      {"/sensing/lidar/front_right/points", "front_right_lidar_points", 0.1F, 1.0F, 0.1F},
-      {"/sensing/lidar/rear_left/points", "rear_left_lidar_points", 0.1F, 0.45F, 1.0F},
-      {"/sensing/lidar/rear_right/points", "rear_right_lidar_points", 1.0F, 0.8F, 0.05F},
+      {"/rslidar_points_2", "right_front_rslidar_points", 1.0F, 0.05F, 0.05F},
+      {"/hesai_left_front", "left_front_hesai_points", 0.1F, 1.0F, 0.1F},
+      {"/rslidar_points_4", "left_rear_rslidar_points", 0.1F, 0.45F, 1.0F},
+      {"/hesai_right_rear", "right_rear_hesai_points", 1.0F, 0.8F, 0.05F},
     };
 
     int32_t id = 0;
@@ -92,7 +92,8 @@ private:
     const auto & config = configs_.at(topic);
     Marker marker;
     marker.header.frame_id = msg.header.frame_id;
-    marker.header.stamp = now();
+    marker.header.stamp.sec = 0;
+    marker.header.stamp.nanosec = 0;
     marker.ns = config.ns;
     marker.id = ids_.at(topic);
     marker.type = Marker::SPHERE_LIST;
@@ -120,6 +121,10 @@ private:
       if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z)) {
         marker.points.push_back(point);
       }
+    }
+
+    if (marker.points.empty()) {
+      return;
     }
 
     MarkerArray markers;

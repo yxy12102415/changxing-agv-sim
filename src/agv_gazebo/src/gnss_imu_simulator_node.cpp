@@ -23,10 +23,10 @@ public:
   GnssImuSimulatorNode() : Node("gnss_imu_simulator")
   {
     odom_topic_ = declare_parameter<std::string>("odom_topic", "/localization/kinematic_state");
-    imu_topic_ = declare_parameter<std::string>("imu_topic", "/sensing/imu/imu_data");
-    gnss_topic_ = declare_parameter<std::string>("gnss_topic", "/sensing/gnss/nav_sat_fix");
-    imu_frame_id_ = declare_parameter<std::string>("imu_frame_id", "base_link");
-    gnss_frame_id_ = declare_parameter<std::string>("gnss_frame_id", "base_link");
+    imu_topic_ = declare_parameter<std::string>("imu_topic", "/chnav/imu/data");
+    gnss_topic_ = declare_parameter<std::string>("gnss_topic", "/chnav/fix");
+    imu_frame_id_ = declare_parameter<std::string>("imu_frame_id", "imu_link");
+    gnss_frame_id_ = declare_parameter<std::string>("gnss_frame_id", "gnss_link");
     reference_latitude_ = declare_parameter<double>("reference_latitude", 31.2304);
     reference_longitude_ = declare_parameter<double>("reference_longitude", 121.4737);
     reference_altitude_ = declare_parameter<double>("reference_altitude", 0.0);

@@ -1,8 +1,18 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+#include <ignition/msgs/boolean.pb.h>
+#include <ignition/msgs/pose.pb.h>
+#include <ignition/transport/Node.hh>
+#endif
 #include <rclcpp/rclcpp.hpp>
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+#include <ros_ign_interfaces/msg/entity.hpp>
+#include <ros_ign_interfaces/srv/set_entity_pose.hpp>
+#else
 #include <ros_gz_interfaces/msg/entity.hpp>
 #include <ros_gz_interfaces/srv/set_entity_pose.hpp>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -14,6 +24,12 @@
 
 namespace
 {
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+namespace gazebo_interfaces = ros_ign_interfaces;
+#else
+namespace gazebo_interfaces = ros_gz_interfaces;
+#endif
+
 constexpr double kPi = 3.14159265358979323846;
 
 geometry_msgs::msg::Quaternion yaw_to_quaternion(const double yaw)
@@ -40,6 +56,23 @@ double distance(const double x0, const double y0, const double x1, const double 
 {
   return std::hypot(x1 - x0, y1 - y0);
 }
+
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+ignition::msgs::Pose to_ign_pose(
+  const std::string & entity_name, const geometry_msgs::msg::Pose & pose)
+{
+  ignition::msgs::Pose out;
+  out.set_name(entity_name);
+  out.mutable_position()->set_x(pose.position.x);
+  out.mutable_position()->set_y(pose.position.y);
+  out.mutable_position()->set_z(pose.position.z);
+  out.mutable_orientation()->set_x(pose.orientation.x);
+  out.mutable_orientation()->set_y(pose.orientation.y);
+  out.mutable_orientation()->set_z(pose.orientation.z);
+  out.mutable_orientation()->set_w(pose.orientation.w);
+  return out;
+}
+#endif
 }  // namespace
 
 class DynamicObstacleSimulatorNode : public rclcpp::Node
@@ -53,7 +86,9 @@ public:
     traffic_vehicle_speed_ = declare_parameter<double>("traffic_vehicle_speed", 1.5);
     pedestrian_speed_ = declare_parameter<double>("pedestrian_speed", 0.8);
 
-    client_ = create_client<ros_gz_interfaces::srv::SetEntityPose>(service_name_);
+#ifndef AGV_USE_ROS_IGN_INTERFACES
+    client_ = create_client<gazebo_interfaces::srv::SetEntityPose>(service_name_);
+#endif
     timer_ = create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::duration<double>(1.0 / std::max(1.0, update_rate_))),
@@ -84,12 +119,14 @@ private:
 
   void on_timer()
   {
+#ifndef AGV_USE_ROS_IGN_INTERFACES
     if (!client_->service_is_ready()) {
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 5000, "Waiting for Gazebo set_pose service: %s",
         service_name_.c_str());
       return;
     }
+#endif
 
     const double t = (now() - start_time_).seconds();
     const std::vector<Waypoint> vehicle_inner_loop{
@@ -264,11 +301,24 @@ private:
 
   void send_pose(const std::string & entity_name, const geometry_msgs::msg::Pose & pose)
   {
-    auto request = std::make_shared<ros_gz_interfaces::srv::SetEntityPose::Request>();
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+    const auto request = to_ign_pose(entity_name, pose);
+    ignition::msgs::Boolean response;
+    bool result = false;
+    constexpr unsigned int timeout_ms = 10;
+    const bool executed = ign_node_.Request(service_name_, request, timeout_ms, response, result);
+    if (!executed || !result || !response.data()) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 5000, "Ignition rejected pose update for %s via %s",
+        entity_name.c_str(), service_name_.c_str());
+    }
+#else
+    auto request = std::make_shared<gazebo_interfaces::srv::SetEntityPose::Request>();
     request->entity.name = entity_name;
-    request->entity.type = ros_gz_interfaces::msg::Entity::MODEL;
+    request->entity.type = gazebo_interfaces::msg::Entity::MODEL;
     request->pose = pose;
     client_->async_send_request(request);
+#endif
   }
 
   std::string service_name_;
@@ -276,7 +326,10 @@ private:
   double traffic_vehicle_speed_;
   double pedestrian_speed_;
   rclcpp::Time start_time_;
-  rclcpp::Client<ros_gz_interfaces::srv::SetEntityPose>::SharedPtr client_;
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+  ignition::transport::Node ign_node_;
+#endif
+  rclcpp::Client<gazebo_interfaces::srv::SetEntityPose>::SharedPtr client_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 
