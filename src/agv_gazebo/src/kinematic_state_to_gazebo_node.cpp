@@ -1,9 +1,19 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+#include <ignition/msgs/boolean.pb.h>
+#include <ignition/msgs/pose.pb.h>
+#include <ignition/transport/Node.hh>
+#endif
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+#include <ros_ign_interfaces/msg/entity.hpp>
+#include <ros_ign_interfaces/srv/set_entity_pose.hpp>
+#else
 #include <ros_gz_interfaces/msg/entity.hpp>
 #include <ros_gz_interfaces/srv/set_entity_pose.hpp>
+#endif
 
 #include <chrono>
 #include <cmath>
@@ -12,6 +22,12 @@
 
 namespace
 {
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+namespace gazebo_interfaces = ros_ign_interfaces;
+#else
+namespace gazebo_interfaces = ros_gz_interfaces;
+#endif
+
 geometry_msgs::msg::Quaternion yaw_to_quaternion(const double yaw)
 {
   geometry_msgs::msg::Quaternion q;
@@ -21,6 +37,23 @@ geometry_msgs::msg::Quaternion yaw_to_quaternion(const double yaw)
   q.w = std::cos(yaw * 0.5);
   return q;
 }
+
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+ignition::msgs::Pose to_ign_pose(
+  const std::string & entity_name, const geometry_msgs::msg::Pose & pose)
+{
+  ignition::msgs::Pose out;
+  out.set_name(entity_name);
+  out.mutable_position()->set_x(pose.position.x);
+  out.mutable_position()->set_y(pose.position.y);
+  out.mutable_position()->set_z(pose.position.z);
+  out.mutable_orientation()->set_x(pose.orientation.x);
+  out.mutable_orientation()->set_y(pose.orientation.y);
+  out.mutable_orientation()->set_z(pose.orientation.z);
+  out.mutable_orientation()->set_w(pose.orientation.w);
+  return out;
+}
+#endif
 }  // namespace
 
 class KinematicStateToGazeboNode : public rclcpp::Node
@@ -37,7 +70,9 @@ public:
     initial_y_ = declare_parameter<double>("initial_y", -57.6716);
     initial_yaw_ = declare_parameter<double>("initial_yaw", -0.7297);
 
-    client_ = create_client<ros_gz_interfaces::srv::SetEntityPose>(service_name_);
+#ifndef AGV_USE_ROS_IGN_INTERFACES
+    client_ = create_client<gazebo_interfaces::srv::SetEntityPose>(service_name_);
+#endif
     sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
       odom_topic_, rclcpp::QoS{1},
       std::bind(&KinematicStateToGazeboNode::on_odom, this, std::placeholders::_1));
@@ -80,6 +115,7 @@ private:
 
   void send_pose(const geometry_msgs::msg::Pose & pose)
   {
+#ifndef AGV_USE_ROS_IGN_INTERFACES
     if (!client_->service_is_ready()) {
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 5000, "Waiting for Gazebo set_pose service: %s",
@@ -90,15 +126,28 @@ private:
     if (request_in_flight_) {
       return;
     }
+#endif
 
-    auto request = std::make_shared<ros_gz_interfaces::srv::SetEntityPose::Request>();
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+    const auto request = to_ign_pose(entity_name_, pose);
+    ignition::msgs::Boolean response;
+    bool result = false;
+    constexpr unsigned int timeout_ms = 10;
+    const bool executed = ign_node_.Request(service_name_, request, timeout_ms, response, result);
+    if (!executed || !result || !response.data()) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 5000, "Ignition rejected pose update for %s via %s",
+        entity_name_.c_str(), service_name_.c_str());
+    }
+#else
+    auto request = std::make_shared<gazebo_interfaces::srv::SetEntityPose::Request>();
     request->entity.name = entity_name_;
-    request->entity.type = ros_gz_interfaces::msg::Entity::MODEL;
+    request->entity.type = gazebo_interfaces::msg::Entity::MODEL;
     request->pose = pose;
 
     request_in_flight_ = true;
     auto response_cb =
-      [this](rclcpp::Client<ros_gz_interfaces::srv::SetEntityPose>::SharedFuture future) {
+      [this](rclcpp::Client<gazebo_interfaces::srv::SetEntityPose>::SharedFuture future) {
         request_in_flight_ = false;
         if (!future.get()->success) {
           RCLCPP_WARN_THROTTLE(
@@ -107,6 +156,7 @@ private:
         }
       };
     client_->async_send_request(request, response_cb);
+#endif
   }
 
   std::string odom_topic_;
@@ -119,7 +169,10 @@ private:
   bool request_in_flight_ = false;
   bool received_odom_ = false;
 
-  rclcpp::Client<ros_gz_interfaces::srv::SetEntityPose>::SharedPtr client_;
+#ifdef AGV_USE_ROS_IGN_INTERFACES
+  ignition::transport::Node ign_node_;
+#endif
+  rclcpp::Client<gazebo_interfaces::srv::SetEntityPose>::SharedPtr client_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
   rclcpp::TimerBase::SharedPtr initial_pose_timer_;
 };

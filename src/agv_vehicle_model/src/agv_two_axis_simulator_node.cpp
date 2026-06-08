@@ -19,7 +19,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/string.hpp>
-#include <tf2_msgs/msg/tf_message.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include <Eigen/Core>
 
@@ -50,7 +50,6 @@ using geometry_msgs::msg::PoseWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
 using std_msgs::msg::Float32;
 using std_msgs::msg::String;
-using tf2_msgs::msg::TFMessage;
 
 geometry_msgs::msg::Quaternion yaw_to_quaternion(const double yaw)
 {
@@ -131,7 +130,7 @@ public:
       "/agv/steering_mode_cmd", rclcpp::QoS{1},
       std::bind(&AgvTwoAxisSimulatorNode::on_steering_mode_cmd, this, std::placeholders::_1));
 
-    pub_tf_ = create_publisher<TFMessage>("/tf", rclcpp::QoS{1});
+    tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     pub_odom_ = create_publisher<Odometry>("/localization/kinematic_state", rclcpp::QoS{1});
     pub_velocity_ =
       create_publisher<VelocityReport>("/vehicle/status/velocity_status", rclcpp::QoS{1});
@@ -323,7 +322,6 @@ private:
   {
     const auto stamp = now();
 
-    TFMessage tf_msg;
     geometry_msgs::msg::TransformStamped transform;
     transform.header.stamp = stamp;
     transform.header.frame_id = frame_id_;
@@ -332,8 +330,7 @@ private:
     transform.transform.translation.y = model_->getY();
     transform.transform.translation.z = 0.0;
     transform.transform.rotation = yaw_to_quaternion(model_->getYaw());
-    tf_msg.transforms.push_back(transform);
-    pub_tf_->publish(tf_msg);
+    tf_broadcaster_->sendTransform(transform);
 
     Odometry odom;
     odom.header.stamp = stamp;
@@ -466,7 +463,7 @@ private:
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_initial_pose_;
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_rviz_initial_pose_;
   rclcpp::Subscription<String>::SharedPtr sub_steering_mode_;
-  rclcpp::Publisher<TFMessage>::SharedPtr pub_tf_;
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Publisher<Odometry>::SharedPtr pub_odom_;
   rclcpp::Publisher<VelocityReport>::SharedPtr pub_velocity_;
   rclcpp::Publisher<SteeringReport>::SharedPtr pub_steering_;

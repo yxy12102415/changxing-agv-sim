@@ -47,10 +47,10 @@ Visualization Manager:
       Enabled: true
       Name: Lidar Point Markers
       Namespaces:
-        front_left_lidar_points: true
-        front_right_lidar_points: true
-        rear_left_lidar_points: true
-        rear_right_lidar_points: true
+        left_front_hesai_points: true
+        left_rear_rslidar_points: true
+        right_front_rslidar_points: true
+        right_rear_hesai_points: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -94,7 +94,7 @@ Visualization Manager:
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: Front Left Helios 32
+      Name: Right Front Helios 32
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 12
@@ -106,7 +106,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /sensing/lidar/front_left/points
+        Value: /rslidar_points_2
       Use Fixed Frame: true
       Use rainbow: false
       Value: false
@@ -128,7 +128,7 @@ Visualization Manager:
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: Front Right Pandar32
+      Name: Left Front Pandar32
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 12
@@ -140,7 +140,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /sensing/lidar/front_right/points
+        Value: /hesai_left_front
       Use Fixed Frame: true
       Use rainbow: false
       Value: false
@@ -162,7 +162,7 @@ Visualization Manager:
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: Rear Left Pandar32
+      Name: Left Rear Helios 32
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 12
@@ -174,7 +174,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /sensing/lidar/rear_left/points
+        Value: /rslidar_points_4
       Use Fixed Frame: true
       Use rainbow: false
       Value: false
@@ -196,7 +196,7 @@ Visualization Manager:
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: Rear Right Helios 32
+      Name: Right Rear Pandar32
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 12
@@ -208,7 +208,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /sensing/lidar/rear_right/points
+        Value: /hesai_right_rear
       Use Fixed Frame: true
       Use rainbow: false
       Value: false
@@ -219,13 +219,17 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
-        ego_agv/front_left_lidar_link/front_left_lidar:
+        gnss_link:
           Value: true
-        ego_agv/front_right_lidar_link/front_right_lidar:
+        hesai_left_front:
           Value: true
-        ego_agv/rear_left_lidar_link/rear_left_lidar:
+        hesai_right_rear:
           Value: true
-        ego_agv/rear_right_lidar_link/rear_right_lidar:
+        imu_link:
+          Value: true
+        rslidar2:
+          Value: true
+        rslidar4:
           Value: true
         map:
           Value: true
@@ -237,13 +241,17 @@ Visualization Manager:
       Tree:
         map:
           base_link:
-            ego_agv/front_left_lidar_link/front_left_lidar:
+            gnss_link:
               {}
-            ego_agv/front_right_lidar_link/front_right_lidar:
+            hesai_left_front:
               {}
-            ego_agv/rear_left_lidar_link/rear_left_lidar:
+            hesai_right_rear:
               {}
-            ego_agv/rear_right_lidar_link/rear_right_lidar:
+            imu_link:
+              {}
+            rslidar2:
+              {}
+            rslidar4:
               {}
       Update Interval: 0
       Value: true
