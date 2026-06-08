@@ -1,0 +1,57 @@
+ARG BASE_IMAGE=osrf/ros:galactic-desktop
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV AGV_WS=/workspace/AGV_sim_ws
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash-completion \
+    build-essential \
+    ca-certificates \
+    cmake \
+    curl \
+    git \
+    gnupg2 \
+    iproute2 \
+    less \
+    lsb-release \
+    nano \
+    python3-colcon-common-extensions \
+    python3-pip \
+    python3-rosdep \
+    python3-vcstool \
+    ripgrep \
+    sudo \
+    vim \
+    wget \
+    x11-apps \
+  && rm -rf /var/lib/apt/lists/*
+
+# Galactic-era Gazebo packages commonly use the ros_ign prefix. Some package
+# names differ by apt repository snapshot, so keep this install best-effort.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-galactic-ros-ign \
+    ros-galactic-ros-ign-bridge \
+    ros-galactic-ros-ign-gazebo \
+    ros-galactic-ros-ign-interfaces \
+  || true \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then \
+      rosdep init; \
+    fi \
+  && rosdep update --rosdistro galactic || true
+
+RUN useradd -m -s /bin/bash -G sudo agv \
+  && echo "agv ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/agv \
+  && chmod 0440 /etc/sudoers.d/agv
+
+USER agv
+WORKDIR ${AGV_WS}
+
+RUN echo "source /opt/ros/galactic/setup.bash" >> /home/agv/.bashrc \
+  && echo "if [ -f ${AGV_WS}/install_galactic/setup.bash ]; then source ${AGV_WS}/install_galactic/setup.bash; fi" >> /home/agv/.bashrc
+
+CMD ["/bin/bash"]

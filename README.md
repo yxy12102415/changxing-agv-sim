@@ -1,19 +1,37 @@
-# AGV Simulation Workspace
+# Changxing AGV Simulation
 
-This workspace contains the first AGV simulation assets:
+This repository keeps the Humble and Galactic simulation workspaces side by side.
 
-- `src/agv_maps/map/changxing_v1.osm`: Lanelet2-style vector map.
-- `src/agv_vehicle_model`: two-axis steering model sources intended for Autoware `simple_planning_simulator` integration.
+## Workspaces
 
-## Build The Current Workspace
+- `humble/`: local ROS 2 Humble Gazebo/RViz simulation.
+- `galactic/`: ROS 2 Galactic Docker simulation workspace.
+
+## Humble
 
 ```bash
+cd humble
 source /opt/ros/humble/setup.bash
-cd /data/projects/AGV_sim_ws
 colcon build --symlink-install
-source install/setup.bash
+./sim.sh
 ```
 
-## Next Integration Step
+## Galactic
 
-The vehicle model depends on Autoware's `simple_planning_simulator` API. This workspace preserves the source layout, but the model still needs to be wired into an Autoware source workspace before it can be selected by Autoware at runtime.
+From the host:
+
+```bash
+cd galactic
+./galactic/docker_galatic.sh
+```
+
+Inside the Docker container:
+
+```bash
+cd /workspace/AGV_sim_ws
+colcon --log-base log_galactic build \
+  --build-base build_galactic \
+  --install-base install_galactic \
+  --symlink-install
+./galactic/sim_galactic.sh
+```
