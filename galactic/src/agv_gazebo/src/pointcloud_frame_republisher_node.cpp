@@ -1,8 +1,12 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 class PointCloudFrameRepublisherNode : public rclcpp::Node
 {
@@ -12,6 +16,7 @@ public:
     input_topic_ = declare_parameter<std::string>("input_topic", "/input/points");
     output_topic_ = declare_parameter<std::string>("output_topic", "/output/points");
     frame_id_ = declare_parameter<std::string>("frame_id", "base_link");
+    z_offset_ = declare_parameter<double>("z_offset", 0.0);
 
     pub_ = create_publisher<sensor_msgs::msg::PointCloud2>(output_topic_, rclcpp::QoS{10});
     sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -19,6 +24,7 @@ public:
       [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
         auto out = *msg;
         out.header.frame_id = frame_id_;
+        apply_z_offset(out);
         pub_->publish(out);
         ++publish_count_;
         if (publish_count_ % 100 == 1) {
@@ -34,9 +40,38 @@ public:
   }
 
 private:
+  void apply_z_offset(sensor_msgs::msg::PointCloud2 & msg) const
+  {
+    if (std::abs(z_offset_) < 1.0e-6 || msg.point_step == 0) {
+      return;
+    }
+
+    std::unordered_map<std::string, uint32_t> offsets;
+    for (const auto & field : msg.fields) {
+      offsets[field.name] = field.offset;
+    }
+    if (!offsets.count("z")) {
+      return;
+    }
+
+    const auto z_offset = offsets.at("z");
+    const auto point_count = static_cast<size_t>(msg.width) * static_cast<size_t>(msg.height);
+    for (size_t i = 0; i < point_count; ++i) {
+      const size_t base = i * msg.point_step + z_offset;
+      if (base + sizeof(float) > msg.data.size()) {
+        break;
+      }
+      float z = 0.0F;
+      std::memcpy(&z, msg.data.data() + base, sizeof(float));
+      z += static_cast<float>(z_offset_);
+      std::memcpy(msg.data.data() + base, &z, sizeof(float));
+    }
+  }
+
   std::string input_topic_;
   std::string output_topic_;
   std::string frame_id_;
+  double z_offset_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
   size_t publish_count_{0};

@@ -1,6 +1,6 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
 #include <ignition/msgs/boolean.pb.h>
 #include <ignition/msgs/pose.pb.h>
 #include <ignition/transport/Node.hh>
@@ -38,7 +38,7 @@ geometry_msgs::msg::Quaternion yaw_to_quaternion(const double yaw)
   return q;
 }
 
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
 ignition::msgs::Pose to_ign_pose(
   const std::string & entity_name, const geometry_msgs::msg::Pose & pose)
 {
@@ -66,11 +66,12 @@ public:
       declare_parameter<std::string>("service_name", "/world/changxing_empty/set_pose");
     entity_name_ = declare_parameter<std::string>("entity_name", "ego_agv");
     z_offset_ = declare_parameter<double>("z_offset", 0.4);
+    use_odom_z_ = declare_parameter<bool>("use_odom_z", false);
     initial_x_ = declare_parameter<double>("initial_x", 0.0674);
     initial_y_ = declare_parameter<double>("initial_y", -57.6716);
     initial_yaw_ = declare_parameter<double>("initial_yaw", -0.7297);
 
-#ifndef AGV_USE_ROS_IGN_INTERFACES
+#ifndef AGV_USE_IGN_TRANSPORT_FOR_POSE
     client_ = create_client<gazebo_interfaces::srv::SetEntityPose>(service_name_);
 #endif
     sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
@@ -109,13 +110,13 @@ private:
     }
 
     auto pose = msg->pose.pose;
-    pose.position.z += z_offset_;
+    pose.position.z = z_offset_ + (use_odom_z_ ? msg->pose.pose.position.z : 0.0);
     send_pose(pose);
   }
 
   void send_pose(const geometry_msgs::msg::Pose & pose)
   {
-#ifndef AGV_USE_ROS_IGN_INTERFACES
+#ifndef AGV_USE_IGN_TRANSPORT_FOR_POSE
     if (!client_->service_is_ready()) {
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 5000, "Waiting for Gazebo set_pose service: %s",
@@ -128,7 +129,7 @@ private:
     }
 #endif
 
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
     const auto request = to_ign_pose(entity_name_, pose);
     ignition::msgs::Boolean response;
     bool result = false;
@@ -163,13 +164,14 @@ private:
   std::string service_name_;
   std::string entity_name_;
   double z_offset_;
+  bool use_odom_z_;
   double initial_x_;
   double initial_y_;
   double initial_yaw_;
   bool request_in_flight_ = false;
   bool received_odom_ = false;
 
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
   ignition::transport::Node ign_node_;
 #endif
   rclcpp::Client<gazebo_interfaces::srv::SetEntityPose>::SharedPtr client_;

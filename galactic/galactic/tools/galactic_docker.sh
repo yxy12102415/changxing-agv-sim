@@ -24,6 +24,7 @@ Environment:
   AGV_GALACTIC_BASE_IMAGE Docker base image. Default: osrf/ros:galactic-desktop
   AGV_GALACTIC_DOCKERFILE Dockerfile path. Default: galactic/docker/Dockerfile.galactic
   AGV_GALACTIC_DOCKER_ARGS Extra docker run args.
+  AGV_GALACTIC_DISABLE_DRI Set to 1 to skip automatic /dev/dri GPU device forwarding.
 
 Examples:
   $0 build
@@ -76,6 +77,29 @@ EOF
     -f "${DOCKERFILE}" \
     -t "${IMAGE_NAME}" \
     "${WS_DIR}"
+}
+
+append_dri_runtime_args() {
+  local -n args_ref=$1
+
+  if [ "${AGV_GALACTIC_DISABLE_DRI:-0}" = "1" ]; then
+    return
+  fi
+
+  if [ ! -d /dev/dri ]; then
+    return
+  fi
+
+  args_ref+=(--device /dev/dri:/dev/dri)
+
+  local group_name
+  for group_name in video render; do
+    local group_id
+    group_id="$(getent group "${group_name}" | awk -F: '{print $3}')"
+    if [ -n "${group_id}" ]; then
+      args_ref+=(--group-add "${group_id}")
+    fi
+  done
 }
 
 docker_shell() {
@@ -146,6 +170,7 @@ EOF
 
   if [ "${mode}" = "gui" ]; then
     runtime_args+=(--net host --ipc host)
+    append_dri_runtime_args runtime_args
   fi
 
   if [ -n "${AGV_GALACTIC_DOCKER_ARGS:-}" ]; then
@@ -178,6 +203,7 @@ docker_sim() {
   local xauthority="${XAUTHORITY:-${HOME}/.Xauthority}"
   local x11_args=()
   local runtime_args=(--net host --ipc host)
+  local tty_args=()
 
   if ! command -v docker >/dev/null 2>&1; then
     cat >&2 <<EOF
@@ -225,7 +251,23 @@ EOF
     if [ -f "${xauthority}" ]; then
       x11_args+=(-e XAUTHORITY=/tmp/.docker.xauth -v "${xauthority}:/tmp/.docker.xauth:ro")
     fi
+  else
+    cat >&2 <<EOF
+Warning: DISPLAY is empty. Galactic Ignition GPU lidar needs an X display even
+when use_gazebo_gui:=false, so Gazebo may fail with "Unable to open display".
+
+Run this from a desktop terminal, or enter the container with:
+
+  ./docker.sh gui
+
+EOF
   fi
+
+  if [ -t 0 ] && [ -t 1 ]; then
+    tty_args=(-it)
+  fi
+
+  append_dri_runtime_args runtime_args
 
   if [ -n "${AGV_GALACTIC_DOCKER_ARGS:-}" ]; then
     # shellcheck disable=SC2206
@@ -233,7 +275,7 @@ EOF
   fi
 
   docker rm -f "${CONTAINER_NAME}-sim" >/dev/null 2>&1 || true
-  docker run --rm -it \
+  docker run --rm "${tty_args[@]}" \
     --name "${CONTAINER_NAME}-sim" \
     -e ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}" \
     -e RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}" \

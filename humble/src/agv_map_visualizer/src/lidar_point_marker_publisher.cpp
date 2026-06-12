@@ -54,6 +54,8 @@ public:
     sample_step_ = declare_parameter<int>("sample_step", 24);
     max_points_ = declare_parameter<int>("max_points_per_cloud", 2500);
     point_size_ = declare_parameter<double>("point_size", 0.07);
+    z_offset_ = declare_parameter<double>("z_offset", 0.0);
+    use_cloud_stamp_ = declare_parameter<bool>("use_cloud_stamp", false);
 
     pub_ = create_publisher<MarkerArray>(output_topic_, rclcpp::QoS{1});
 
@@ -92,8 +94,12 @@ private:
     const auto & config = configs_.at(topic);
     Marker marker;
     marker.header.frame_id = msg.header.frame_id;
-    marker.header.stamp.sec = 0;
-    marker.header.stamp.nanosec = 0;
+    if (use_cloud_stamp_) {
+      marker.header.stamp = msg.header.stamp;
+    } else {
+      marker.header.stamp.sec = 0;
+      marker.header.stamp.nanosec = 0;
+    }
     marker.ns = config.ns;
     marker.id = ids_.at(topic);
     marker.type = Marker::SPHERE_LIST;
@@ -117,7 +123,7 @@ private:
       geometry_msgs::msg::Point point;
       point.x = read_float32(msg.data, base + offsets["x"]);
       point.y = read_float32(msg.data, base + offsets["y"]);
-      point.z = read_float32(msg.data, base + offsets["z"]);
+      point.z = read_float32(msg.data, base + offsets["z"]) + z_offset_;
       if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z)) {
         marker.points.push_back(point);
       }
@@ -136,6 +142,8 @@ private:
   int sample_step_;
   int max_points_;
   double point_size_;
+  double z_offset_;
+  bool use_cloud_stamp_;
   std::unordered_map<std::string, CloudConfig> configs_;
   std::unordered_map<std::string, int32_t> ids_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_;

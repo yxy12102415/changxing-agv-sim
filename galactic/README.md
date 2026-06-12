@@ -11,6 +11,11 @@ host stays on Humble.
 - `src/agv_vehicle_model`: two-axis steering simulator node and keyboard teleop.
 - `src/agv_map_visualizer`: Lanelet2, vehicle, and sampled lidar marker
   publishers for RViz.
+- `src/agv_mpc_controller`: centerline trajectory publisher and lightweight
+  sampling MPC tracker for the standalone simulation.
+- `src/autoware_*_msgs`: local Autoware-style message definitions used by the
+  simulator interface. This workspace is Autoware-style, not a full Autoware
+  checkout.
 - `src/agv_maps/map/changxing_v1.osm`: Changxing Lanelet2-style vector map.
 - `src/agv_bringup`: Autoware + Gazebo integration launch files and route helper.
 
@@ -55,15 +60,54 @@ ros2 launch agv_gazebo agv_gazebo_sim.launch.py
 ```
 
 It starts Gazebo, the AGV two-axis simulator, Gazebo pose follower, dynamic
-traffic/pedestrian obstacles, map loaders, RViz, and visualization marker nodes.
+traffic/pedestrian obstacles, standalone map visualization, centerline
+trajectory publishing, sampling MPC control, RViz, and visualization marker
+nodes.
 
 Useful launch arguments:
 
 ```bash
 ./sim.sh use_rviz:=false
+./sim.sh use_gazebo_gui:=false
+./sim.sh enable_mpc:=false
 ./sim.sh initial_x:=0.0674 initial_y:=-57.6716 initial_yaw:=-0.7297
 ./sim.sh steering_mode:=crab
 ```
+
+MPC tracking errors are written by default inside the container to:
+
+```text
+/tmp/agv_mpc_error.csv
+```
+
+The main standalone control chain is:
+
+```text
+centerline_trajectory_publisher
+-> sampling_mpc_controller
+-> /control/command/control_cmd
+-> agv_two_axis_simulator_node
+-> /localization/kinematic_state
+```
+
+If you enter the container manually with:
+
+```bash
+./galactic/tools/galactic_docker.sh gui
+```
+
+do not run `galactic_docker.sh gui` again from inside the container. The prompt
+will look like `agv@...:/workspace/AGV_sim_ws$`; from there run:
+
+```bash
+bash galactic/sim_galactic.sh
+```
+
+Galactic's Ignition 5 GPU lidar server still needs an X display even when
+`use_gazebo_gui:=false`. If there is no `DISPLAY`, Ogre2 can fail to initialize.
+Use the host `./sim.sh` wrapper or `galactic_docker.sh gui` so X11 is passed
+through. Some `libGL` driver warnings in Docker are expected as long as the
+lidar topics and MPC error log continue updating.
 
 To stop the running simulation container:
 

@@ -64,6 +64,7 @@ if(
     tf2_ros
   )
   target_link_libraries(agv_two_axis_simulator_node Eigen3::Eigen)
+  list(APPEND AGV_VEHICLE_MODEL_TARGETS agv_two_axis_simulator_node)
 
   add_executable(agv_keyboard_teleop_node
     src/agv_keyboard_teleop_node.cpp
@@ -88,6 +89,7 @@ else()
     tf2_msgs
     tf2_ros
   )
+  list(APPEND AGV_VEHICLE_MODEL_TARGETS agv_two_axis_simulator_node)
 endif()
 
 install(

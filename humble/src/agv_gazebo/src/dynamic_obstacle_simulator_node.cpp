@@ -1,6 +1,6 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
 #include <ignition/msgs/boolean.pb.h>
 #include <ignition/msgs/pose.pb.h>
 #include <ignition/transport/Node.hh>
@@ -57,7 +57,7 @@ double distance(const double x0, const double y0, const double x1, const double 
   return std::hypot(x1 - x0, y1 - y0);
 }
 
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
 ignition::msgs::Pose to_ign_pose(
   const std::string & entity_name, const geometry_msgs::msg::Pose & pose)
 {
@@ -86,7 +86,7 @@ public:
     traffic_vehicle_speed_ = declare_parameter<double>("traffic_vehicle_speed", 1.5);
     pedestrian_speed_ = declare_parameter<double>("pedestrian_speed", 0.8);
 
-#ifndef AGV_USE_ROS_IGN_INTERFACES
+#ifndef AGV_USE_IGN_TRANSPORT_FOR_POSE
     client_ = create_client<gazebo_interfaces::srv::SetEntityPose>(service_name_);
 #endif
     timer_ = create_wall_timer(
@@ -119,7 +119,7 @@ private:
 
   void on_timer()
   {
-#ifndef AGV_USE_ROS_IGN_INTERFACES
+#ifndef AGV_USE_IGN_TRANSPORT_FOR_POSE
     if (!client_->service_is_ready()) {
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 5000, "Waiting for Gazebo set_pose service: %s",
@@ -301,7 +301,7 @@ private:
 
   void send_pose(const std::string & entity_name, const geometry_msgs::msg::Pose & pose)
   {
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
     const auto request = to_ign_pose(entity_name, pose);
     ignition::msgs::Boolean response;
     bool result = false;
@@ -326,7 +326,7 @@ private:
   double traffic_vehicle_speed_;
   double pedestrian_speed_;
   rclcpp::Time start_time_;
-#ifdef AGV_USE_ROS_IGN_INTERFACES
+#ifdef AGV_USE_IGN_TRANSPORT_FOR_POSE
   ignition::transport::Node ign_node_;
 #endif
   rclcpp::Client<gazebo_interfaces::srv::SetEntityPose>::SharedPtr client_;

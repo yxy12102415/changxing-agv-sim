@@ -33,6 +33,10 @@ foreach(IGN_MSGS_VERSION 8 7)
   endif()
 endforeach()
 
+if(IGNITION_TRANSPORT_TARGET AND IGNITION_MSGS_TARGET)
+  add_compile_definitions(AGV_USE_IGN_TRANSPORT_FOR_POSE)
+endif()
+
 add_executable(kinematic_state_to_gazebo_node
   src/kinematic_state_to_gazebo_node.cpp
 )

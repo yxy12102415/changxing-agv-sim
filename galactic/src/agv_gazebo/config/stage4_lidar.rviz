@@ -45,6 +45,18 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
+      Name: MPC Centerline
+      Namespaces:
+        mpc_centerline: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /visualization/centerline_trajectory_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
       Name: Lidar Point Markers
       Namespaces:
         left_front_hesai_points: true

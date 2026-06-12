@@ -3,6 +3,7 @@
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/float32.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
@@ -14,6 +15,7 @@
 namespace
 {
 using nav_msgs::msg::Odometry;
+using std_msgs::msg::Float32;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 
@@ -119,15 +121,24 @@ public:
     wheel_tread_ = declare_parameter<double>("wheel_tread", 1.36);
     wheel_radius_ = declare_parameter<double>("wheel_radius", 0.28);
     wheel_width_ = declare_parameter<double>("wheel_width", 0.24);
+    visual_z_offset_ = declare_parameter<double>("visual_z_offset", 0.0);
     lidar_radius_ = declare_parameter<double>("lidar_radius", 0.13);
     lidar_height_ = declare_parameter<double>("lidar_height", 0.14);
     lidar_cap_radius_ = declare_parameter<double>("lidar_cap_radius", 0.145);
     lidar_cap_height_ = declare_parameter<double>("lidar_cap_height", 0.035);
+    front_steer_topic_ = declare_parameter<std::string>("front_steer_topic", "/agv/status/front_steer");
+    rear_steer_topic_ = declare_parameter<std::string>("rear_steer_topic", "/agv/status/rear_steer");
 
     pub_marker_ = create_publisher<MarkerArray>(output_topic_, rclcpp::QoS{1});
     sub_odom_ = create_subscription<Odometry>(
       input_topic_, rclcpp::QoS{10},
       std::bind(&AgvVehicleMarkerPublisher::on_odometry, this, std::placeholders::_1));
+    sub_front_steer_ = create_subscription<Float32>(
+      front_steer_topic_, rclcpp::QoS{10},
+      [this](const Float32::ConstSharedPtr msg) { front_steer_ = msg->data; });
+    sub_rear_steer_ = create_subscription<Float32>(
+      rear_steer_topic_, rclcpp::QoS{10},
+      [this](const Float32::ConstSharedPtr msg) { rear_steer_ = msg->data; });
 
     RCLCPP_INFO(
       get_logger(), "Publishing AGV vehicle markers: %s -> %s", input_topic_.c_str(),
@@ -139,7 +150,8 @@ private:
   {
     const auto stamp = now();
     const auto frame = msg->header.frame_id.empty() ? frame_id_ : msg->header.frame_id;
-    const auto & pose = msg->pose.pose;
+    auto pose = msg->pose.pose;
+    pose.position.z += visual_z_offset_;
 
     Marker body = base_marker(frame, stamp, "agv_body", 0, Marker::CUBE);
     body.pose = pose;
@@ -163,13 +175,25 @@ private:
     int32_t wheel_id = 10;
     for (const double x : {-wheelbase_ * 0.5, wheelbase_ * 0.5}) {
       for (const double y : {-wheel_tread_ * 0.5, wheel_tread_ * 0.5}) {
+        const bool is_front = x > 0.0;
+        const double steer = is_front ? front_steer_ : rear_steer_;
         Marker wheel = base_marker(frame, stamp, "agv_wheels", wheel_id++, Marker::CYLINDER);
-        wheel.pose = offset_pose(pose, x, y, wheel_radius_, 1.5708, 0.0, 0.0);
+        wheel.pose = offset_pose(pose, x, y, wheel_radius_, 1.5708, 0.0, steer);
         wheel.scale.x = wheel_radius_ * 2.0;
         wheel.scale.y = wheel_radius_ * 2.0;
         wheel.scale.z = wheel_width_;
         wheel.color = color(0.01F, 0.01F, 0.01F, 0.98F);
         markers.markers.push_back(wheel);
+
+        Marker steer_indicator =
+          base_marker(frame, stamp, "agv_wheel_steer_indicators", wheel_id++, Marker::CUBE);
+        steer_indicator.pose = offset_pose(pose, x, y, wheel_radius_ + 0.03, 0.0, 0.0, steer);
+        steer_indicator.scale.x = wheel_radius_ * 1.7;
+        steer_indicator.scale.y = 0.055;
+        steer_indicator.scale.z = 0.08;
+        steer_indicator.color =
+          is_front ? color(1.0F, 0.78F, 0.05F, 0.98F) : color(0.15F, 0.65F, 1.0F, 0.98F);
+        markers.markers.push_back(steer_indicator);
       }
     }
 
@@ -223,12 +247,19 @@ private:
   double wheel_tread_;
   double wheel_radius_;
   double wheel_width_;
+  double visual_z_offset_;
   double lidar_radius_;
   double lidar_height_;
   double lidar_cap_radius_;
   double lidar_cap_height_;
+  double front_steer_ = 0.0;
+  double rear_steer_ = 0.0;
+  std::string front_steer_topic_;
+  std::string rear_steer_topic_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_marker_;
   rclcpp::Subscription<Odometry>::SharedPtr sub_odom_;
+  rclcpp::Subscription<Float32>::SharedPtr sub_front_steer_;
+  rclcpp::Subscription<Float32>::SharedPtr sub_rear_steer_;
 };
 
 int main(int argc, char ** argv)

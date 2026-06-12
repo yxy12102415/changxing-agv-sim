@@ -12,6 +12,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
 set(AGV_MAP_VISUALIZER_TARGETS
@@ -40,6 +41,7 @@ ament_target_dependencies(agv_vehicle_marker_publisher
   geometry_msgs
   nav_msgs
   rclcpp
+  std_msgs
   visualization_msgs
 )
 

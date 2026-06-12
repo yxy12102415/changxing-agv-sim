@@ -121,6 +121,13 @@ def generate_launch_description():
     use_gazebo_gui = LaunchConfiguration("use_gazebo_gui")
     use_standalone_map = LaunchConfiguration("use_standalone_map")
     use_autoware_map = LaunchConfiguration("use_autoware_map")
+    enable_centerline_trajectory = LaunchConfiguration("enable_centerline_trajectory")
+    enable_mpc = LaunchConfiguration("enable_mpc")
+    target_speed = LaunchConfiguration("target_speed")
+    normal_lane_change_guard_distance = LaunchConfiguration("normal_lane_change_guard_distance")
+    normal_lane_change_guard_epsilon = LaunchConfiguration("normal_lane_change_guard_epsilon")
+    enable_error_log = LaunchConfiguration("enable_error_log")
+    error_log_path = LaunchConfiguration("error_log_path")
     rviz_library_path = os.pathsep.join(
         path for path in os.environ.get("LD_LIBRARY_PATH", "").split(os.pathsep)
         if path and not path.startswith("/snap/")
@@ -218,7 +225,7 @@ def generate_launch_description():
             DeclareLaunchArgument("initial_x", default_value="0.0674"),
             DeclareLaunchArgument("initial_y", default_value="-57.6716"),
             DeclareLaunchArgument("initial_yaw", default_value="-0.7297"),
-            DeclareLaunchArgument("steering_mode", default_value="crab"),
+            DeclareLaunchArgument("steering_mode", default_value="asymmetric_4ws"),
             DeclareLaunchArgument("imu_x", default_value="0.0"),
             DeclareLaunchArgument("imu_y", default_value="0.0"),
             DeclareLaunchArgument("imu_z", default_value="0.60"),
@@ -261,6 +268,13 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("use_standalone_map", default_value="true"),
             DeclareLaunchArgument("use_autoware_map", default_value="false"),
+            DeclareLaunchArgument("enable_centerline_trajectory", default_value="true"),
+            DeclareLaunchArgument("enable_mpc", default_value="true"),
+            DeclareLaunchArgument("target_speed", default_value="4.0"),
+            DeclareLaunchArgument("normal_lane_change_guard_distance", default_value="12.0"),
+            DeclareLaunchArgument("normal_lane_change_guard_epsilon", default_value="0.5"),
+            DeclareLaunchArgument("enable_error_log", default_value="true"),
+            DeclareLaunchArgument("error_log_path", default_value="/tmp/agv_mpc_error.csv"),
             DeclareLaunchArgument("rviz_config", default_value=default_rviz_config),
             SetEnvironmentVariable(
                 name="GZ_SIM_RESOURCE_PATH",
@@ -331,6 +345,7 @@ def generate_launch_description():
                             "input_topic": input_topic,
                             "output_topic": output_topic,
                             "frame_id": frame_id,
+                            "z_offset": 0.0,
                         }
                     ],
                 )
@@ -387,16 +402,114 @@ def generate_launch_description():
             ),
             Node(
                 package="agv_vehicle_model",
-                executable="agv_standalone_simulator_node",
+                executable="agv_two_axis_simulator_node",
                 name="agv_two_axis_simulator",
                 output="screen",
                 parameters=[
                     {
+                        "frame_id": "map",
+                        "child_frame_id": "base_link",
+                        "steering_mode": steering_mode,
+                        "dt": 0.025,
+                        "vx_lim": 5.0,
+                        "steer_lim": 0.7,
+                        "vx_rate_lim": 2.0,
+                        "steer_rate_lim": 1.5,
+                        "wheelbase_f": 1.0,
+                        "wheelbase_r": 1.0,
+                        "wheel_tread": 1.36,
+                        "wheel_radius": 0.28,
+                        "vx_delay": 0.1,
+                        "vx_time_constant": 0.2,
+                        "steer_delay": 0.1,
+                        "steer_time_constant": 0.2,
+                        "steer_dead_band": 0.0,
+                        "steer_bias": 0.0,
+                        "steering_mode_transition_time": 0.45,
                         "initial_x": initial_x,
                         "initial_y": initial_y,
                         "initial_yaw": initial_yaw,
+                        "map_path": map_path,
+                        "use_ground_height": True,
+                        "ground_height_offset": 0.0,
                     }
                 ],
+            ),
+            Node(
+                package="agv_mpc_controller",
+                executable="centerline_trajectory_publisher",
+                name="centerline_trajectory_publisher",
+                output="screen",
+                parameters=[
+                    {
+                        "map_path": map_path,
+                        "output_topic": "/planning/scenario_planning/trajectory",
+                        "marker_topic": "/visualization/centerline_trajectory_marker",
+                        "frame_id": "map",
+                        "target_speed": target_speed,
+                        "min_speed": 0.5,
+                        "max_lateral_accel": 0.35,
+                        "curvature_window": 4,
+                        "speed_smoothing_passes": 3,
+                        "path_smoothing_passes": 3,
+                        "point_spacing": 0.5,
+                        "route_mode": "dual_lane_change",
+                        "lane_change_length": 16.0,
+                        "inner_to_outer_inner_s": 84.0,
+                        "inner_to_outer_outer_s": 84.0,
+                        "outer_to_inner_outer_s": 218.0,
+                        "outer_to_inner_inner_s": 212.0,
+                        "initial_x": initial_x,
+                        "initial_y": initial_y,
+                    }
+                ],
+                condition=IfCondition(enable_centerline_trajectory),
+            ),
+            Node(
+                package="agv_mpc_controller",
+                executable="sampling_mpc_controller",
+                name="sampling_mpc_controller",
+                output="screen",
+                parameters=[
+                    {
+                        "trajectory_topic": "/planning/scenario_planning/trajectory",
+                        "odom_topic": "/localization/kinematic_state",
+                        "steering_topic": "/vehicle/status/steering_status",
+                        "control_topic": "/control/command/control_cmd",
+                        "gear_topic": "/control/command/gear_cmd",
+                        "control_rate": 30.0,
+                        "prediction_dt": 0.2,
+                        "horizon_steps": 12,
+                        "target_speed": target_speed,
+                        "vx_lim": 5.0,
+                        "vx_rate_lim": 2.0,
+                        "steer_lim": 0.7,
+                        "steer_rate_lim": 1.5,
+                        "command_steer_rate_lim": 1.5,
+                        "prediction_steer_rate_lim": 1.5,
+                        "prediction_vx_time_constant": 0.2,
+                        "prediction_steer_time_constant": 0.2,
+                        "wheelbase_f": 1.0,
+                        "wheelbase_r": 1.0,
+                        "steering_mode": steering_mode,
+                        "enable_lane_change_mode": True,
+                        "lane_change_steering_mode": "crab",
+                        "fixed_lane_change_windows": "111.5:133.0,239.5:261.0",
+                        "lane_change_preview_distance": 8.0,
+                        "lane_change_lateral_threshold": 0.8,
+                        "lane_change_exit_lateral_threshold": 0.4,
+                        "lane_change_heading_threshold": 0.6,
+                        "normal_lane_change_guard_distance": normal_lane_change_guard_distance,
+                        "normal_lane_change_guard_epsilon": normal_lane_change_guard_epsilon,
+                        "curvature_preview_distance": 3.0,
+                        "feedforward_steer_limit": 0.45,
+                        "crab_reference_yaw_lookback": 2.0,
+                        "crab_preview_time": 2.2,
+                        "enable_error_log": enable_error_log,
+                        "error_log_path": error_log_path,
+                    }
+                ],
+                condition=IfCondition(enable_mpc),
             ),
             Node(
                 package="agv_gazebo",
@@ -409,6 +522,7 @@ def generate_launch_description():
                         "service_name": "/world/changxing_empty/set_pose",
                         "entity_name": "ego_agv",
                         "z_offset": 0.4,
+                        "use_odom_z": False,
                         "initial_x": initial_x,
                         "initial_y": initial_y,
                         "initial_yaw": initial_yaw,
@@ -461,6 +575,9 @@ def generate_launch_description():
                         "height": 0.8,
                         "wheelbase": 2.0,
                         "wheel_tread": 1.36,
+                        "front_steer_topic": "/agv/status/front_steer",
+                        "rear_steer_topic": "/agv/status/rear_steer",
+                        "visual_z_offset": 0.0,
                     }
                 ],
             ),
@@ -475,6 +592,7 @@ def generate_launch_description():
                         "point_size": 0.07,
                         "sample_step": 3,
                         "max_points_per_cloud": 20000,
+                        "z_offset": 0.0,
                     }
                 ],
             ),

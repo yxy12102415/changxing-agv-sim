@@ -66,6 +66,7 @@ public:
       declare_parameter<std::string>("service_name", "/world/changxing_empty/set_pose");
     entity_name_ = declare_parameter<std::string>("entity_name", "ego_agv");
     z_offset_ = declare_parameter<double>("z_offset", 0.4);
+    use_odom_z_ = declare_parameter<bool>("use_odom_z", false);
     initial_x_ = declare_parameter<double>("initial_x", 0.0674);
     initial_y_ = declare_parameter<double>("initial_y", -57.6716);
     initial_yaw_ = declare_parameter<double>("initial_yaw", -0.7297);
@@ -109,7 +110,7 @@ private:
     }
 
     auto pose = msg->pose.pose;
-    pose.position.z += z_offset_;
+    pose.position.z = z_offset_ + (use_odom_z_ ? msg->pose.pose.position.z : 0.0);
     send_pose(pose);
   }
 
@@ -163,6 +164,7 @@ private:
   std::string service_name_;
   std::string entity_name_;
   double z_offset_;
+  bool use_odom_z_;
   double initial_x_;
   double initial_y_;
   double initial_yaw_;

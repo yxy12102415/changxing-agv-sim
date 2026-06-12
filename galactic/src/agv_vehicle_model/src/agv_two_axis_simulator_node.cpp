@@ -15,6 +15,7 @@
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 #include <autoware_vehicle_msgs/srv/control_mode_command.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float32.hpp>
@@ -24,10 +25,15 @@
 #include <Eigen/Core>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <fstream>
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace
 {
@@ -66,6 +72,31 @@ double yaw_from_quaternion(const geometry_msgs::msg::Quaternion & q)
   return std::atan2(
     2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
 }
+
+std::optional<double> extract_osm_tag_value(const std::string & line, const std::string & key)
+{
+  const std::string key_pattern = "k=\"" + key + "\"";
+  if (line.find(key_pattern) == std::string::npos) {
+    return std::nullopt;
+  }
+
+  const auto value_key = std::string{"v=\""};
+  const auto begin = line.find(value_key);
+  if (begin == std::string::npos) {
+    return std::nullopt;
+  }
+  const auto value_begin = begin + value_key.size();
+  const auto value_end = line.find('"', value_begin);
+  if (value_end == std::string::npos || value_end <= value_begin) {
+    return std::nullopt;
+  }
+
+  try {
+    return std::stod(line.substr(value_begin, value_end - value_begin));
+  } catch (const std::exception &) {
+    return std::nullopt;
+  }
+}
 }  // namespace
 
 class AgvTwoAxisSimulatorNode : public rclcpp::Node
@@ -89,9 +120,20 @@ public:
     steer_time_constant_ = declare_parameter<double>("steer_time_constant", 0.2);
     steer_dead_band_ = declare_parameter<double>("steer_dead_band", 0.0);
     steer_bias_ = declare_parameter<double>("steer_bias", 0.0);
+    steering_mode_transition_time_ = declare_parameter<double>("steering_mode_transition_time", 0.45);
+    wheel_tread_ = declare_parameter<double>("wheel_tread", 1.36);
+    wheel_radius_ = declare_parameter<double>("wheel_radius", 0.28);
+    wheel_frame_prefix_ = declare_parameter<std::string>("wheel_frame_prefix", "");
     initial_x_ = declare_parameter<double>("initial_x", 0.0);
     initial_y_ = declare_parameter<double>("initial_y", 0.0);
     initial_yaw_ = declare_parameter<double>("initial_yaw", 0.0);
+    map_path_ = declare_parameter<std::string>("map_path", "");
+    use_ground_height_ = declare_parameter<bool>("use_ground_height", true);
+    ground_height_offset_ = declare_parameter<double>("ground_height_offset", 0.0);
+
+    load_ground_points(map_path_);
+    target_rear_steer_ratio_ = rear_steer_ratio_for_mode(steering_mode_);
+    current_rear_steer_ratio_ = target_rear_steer_ratio_;
 
     model_ = std::make_unique<SimModelDelaySteerVelTwoAxis>(
       vx_lim_, steer_lim_, vx_rate_lim_, steer_rate_lim_, wheelbase_f_, wheelbase_r_, dt_,
@@ -193,14 +235,20 @@ private:
 
   void on_steering_mode_cmd(const String::ConstSharedPtr msg)
   {
-    if (msg->data == "front_only" || msg->data == "opposite_4ws" || msg->data == "crab") {
+    if (
+      msg->data == "front_only" || msg->data == "opposite_4ws" ||
+      msg->data == "asymmetric_4ws" || msg->data == "crab") {
       steering_mode_ = msg->data;
-      RCLCPP_INFO(get_logger(), "Changed steering_mode to '%s'", steering_mode_.c_str());
+      target_rear_steer_ratio_ = rear_steer_ratio_for_mode(steering_mode_);
+      RCLCPP_INFO(
+        get_logger(), "Changed steering_mode to '%s' with rear ratio target %.3f",
+        steering_mode_.c_str(), target_rear_steer_ratio_);
       return;
     }
 
     RCLCPP_WARN(
-      get_logger(), "Rejected unknown steering_mode '%s'. Use front_only, opposite_4ws, or crab.",
+      get_logger(),
+      "Rejected unknown steering_mode '%s'. Use front_only, opposite_4ws, asymmetric_4ws, or crab.",
       msg->data.c_str());
   }
 
@@ -289,6 +337,7 @@ private:
     const double command_steer = std::clamp(
       static_cast<double>(control.lateral.steering_tire_angle), -steer_lim_, steer_lim_);
 
+    update_steering_mode_transition();
     const auto [steer_f, steer_r] = split_steer(command_steer);
     last_front_steer_cmd_ = steer_f;
     last_rear_steer_cmd_ = steer_r;
@@ -302,25 +351,79 @@ private:
 
   std::pair<double, double> split_steer(const double command_steer)
   {
-    if (steering_mode_ == "front_only") {
-      return {command_steer, 0.0};
-    }
-    if (steering_mode_ == "crab") {
-      return {command_steer, command_steer};
-    }
-    if (steering_mode_ == "opposite_4ws") {
-      return {command_steer, -command_steer};
-    }
+    return {command_steer, command_steer * current_rear_steer_ratio_};
+  }
 
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 5000, "Unknown steering_mode '%s', using opposite_4ws",
-      steering_mode_.c_str());
-    return {command_steer, -command_steer};
+  double rear_steer_ratio_for_mode(const std::string & mode) const
+  {
+    if (mode == "front_only") {
+      return 0.0;
+    }
+    if (mode == "crab") {
+      return 1.0;
+    }
+    if (mode == "opposite_4ws") {
+      return -1.0;
+    }
+    if (mode == "asymmetric_4ws") {
+      return -1.0 / 3.0;
+    }
+    return -1.0;
+  }
+
+  void update_steering_mode_transition()
+  {
+    const double transition_time = std::max(1.0e-3, steering_mode_transition_time_);
+    const double max_step = dt_ / transition_time;
+    const double error = target_rear_steer_ratio_ - current_rear_steer_ratio_;
+    current_rear_steer_ratio_ += std::clamp(error, -max_step, max_step);
+  }
+
+  std::string wheel_frame_id(const std::string & name) const
+  {
+    return wheel_frame_prefix_.empty() ? name : wheel_frame_prefix_ + name;
+  }
+
+  geometry_msgs::msg::TransformStamped make_wheel_transform(
+    const rclcpp::Time & stamp, const std::string & name, const double x, const double y,
+    const double steer) const
+  {
+    geometry_msgs::msg::TransformStamped transform;
+    transform.header.stamp = stamp;
+    transform.header.frame_id = child_frame_id_;
+    transform.child_frame_id = wheel_frame_id(name);
+    transform.transform.translation.x = x;
+    transform.transform.translation.y = y;
+    transform.transform.translation.z = wheel_radius_;
+    transform.transform.rotation = yaw_to_quaternion(steer);
+    return transform;
+  }
+
+  void publish_wheel_transforms(
+    const rclcpp::Time & stamp, const double front_steer, const double rear_steer)
+  {
+    const std::array<geometry_msgs::msg::TransformStamped, 4> wheel_transforms{{
+      make_wheel_transform(
+        stamp, "front_left_wheel", wheelbase_f_, wheel_tread_ * 0.5, front_steer),
+      make_wheel_transform(
+        stamp, "front_right_wheel", wheelbase_f_, -wheel_tread_ * 0.5, front_steer),
+      make_wheel_transform(
+        stamp, "rear_left_wheel", -wheelbase_r_, wheel_tread_ * 0.5, rear_steer),
+      make_wheel_transform(
+        stamp, "rear_right_wheel", -wheelbase_r_, -wheel_tread_ * 0.5, rear_steer),
+    }};
+
+    for (const auto & transform : wheel_transforms) {
+      tf_broadcaster_->sendTransform(transform);
+    }
   }
 
   void publish_state()
   {
     const auto stamp = now();
+    const double ground_z = get_ground_height(model_->getX(), model_->getY());
+    const double front_steer_angle = model_->getSteerF();
+    const double rear_steer_angle = model_->getSteerR();
 
     geometry_msgs::msg::TransformStamped transform;
     transform.header.stamp = stamp;
@@ -328,9 +431,10 @@ private:
     transform.child_frame_id = child_frame_id_;
     transform.transform.translation.x = model_->getX();
     transform.transform.translation.y = model_->getY();
-    transform.transform.translation.z = 0.0;
+    transform.transform.translation.z = ground_z;
     transform.transform.rotation = yaw_to_quaternion(model_->getYaw());
     tf_broadcaster_->sendTransform(transform);
+    publish_wheel_transforms(stamp, front_steer_angle, rear_steer_angle);
 
     Odometry odom;
     odom.header.stamp = stamp;
@@ -338,7 +442,7 @@ private:
     odom.child_frame_id = child_frame_id_;
     odom.pose.pose.position.x = model_->getX();
     odom.pose.pose.position.y = model_->getY();
-    odom.pose.pose.position.z = 0.0;
+    odom.pose.pose.position.z = ground_z;
     odom.pose.pose.orientation = yaw_to_quaternion(model_->getYaw());
     odom.twist.twist.linear.x = model_->getVx();
     odom.twist.twist.linear.y = model_->getVy();
@@ -355,7 +459,7 @@ private:
 
     SteeringReport steering;
     steering.stamp = stamp;
-    steering.steering_tire_angle = static_cast<float>(model_->getSteer());
+    steering.steering_tire_angle = static_cast<float>(front_steer_angle);
     pub_steering_->publish(steering);
 
     GearReport gear;
@@ -396,11 +500,11 @@ private:
     pub_steering_mode_->publish(mode);
 
     Float32 front_steer;
-    front_steer.data = static_cast<float>(last_front_steer_cmd_);
+    front_steer.data = static_cast<float>(front_steer_angle);
     pub_front_steer_->publish(front_steer);
 
     Float32 rear_steer;
-    rear_steer.data = static_cast<float>(last_rear_steer_cmd_);
+    rear_steer.data = static_cast<float>(rear_steer_angle);
     pub_rear_steer_->publish(rear_steer);
   }
 
@@ -422,9 +526,103 @@ private:
     return current_control_;
   }
 
+  struct GroundPoint
+  {
+    double x;
+    double y;
+    double z;
+  };
+
+  void load_ground_points(const std::string & map_path)
+  {
+    if (!use_ground_height_ || map_path.empty()) {
+      return;
+    }
+
+    std::ifstream file(map_path);
+    if (!file.is_open()) {
+      RCLCPP_WARN(get_logger(), "Failed to open map_path for ground height: %s", map_path.c_str());
+      return;
+    }
+
+    bool in_node = false;
+    std::optional<double> x;
+    std::optional<double> y;
+    std::optional<double> z;
+    std::string line;
+    while (std::getline(file, line)) {
+      if (line.find("<node ") != std::string::npos) {
+        in_node = true;
+        x.reset();
+        y.reset();
+        z.reset();
+        continue;
+      }
+      if (!in_node) {
+        continue;
+      }
+
+      if (auto value = extract_osm_tag_value(line, "local_x")) {
+        x = value;
+      } else if (auto value = extract_osm_tag_value(line, "local_y")) {
+        y = value;
+      } else if (auto value = extract_osm_tag_value(line, "ele")) {
+        z = value;
+      }
+
+      if (line.find("</node>") != std::string::npos) {
+        if (x && y && z) {
+          ground_points_.push_back({*x, *y, *z});
+        }
+        in_node = false;
+      }
+    }
+
+    RCLCPP_INFO(
+      get_logger(), "Loaded %zu ground height points from %s", ground_points_.size(),
+      map_path.c_str());
+  }
+
+  double get_ground_height(const double x, const double y) const
+  {
+    if (!use_ground_height_ || ground_points_.empty()) {
+      return ground_height_offset_;
+    }
+
+    std::vector<std::pair<double, double>> nearest;
+    nearest.reserve(8);
+    for (const auto & point : ground_points_) {
+      const double dx = point.x - x;
+      const double dy = point.y - y;
+      const double dist2 = dx * dx + dy * dy;
+      nearest.emplace_back(dist2, point.z);
+    }
+    const auto count = std::min<size_t>(8, nearest.size());
+    if (count < nearest.size()) {
+      std::nth_element(nearest.begin(), nearest.begin() + count, nearest.end());
+    }
+
+    double weighted_z = 0.0;
+    double weight_sum = 0.0;
+    for (auto it = nearest.begin(); it != nearest.begin() + count; ++it) {
+      if (it->first < 1.0e-6) {
+        return it->second + ground_height_offset_;
+      }
+      const double weight = 1.0 / it->first;
+      weighted_z += weight * it->second;
+      weight_sum += weight;
+    }
+
+    if (weight_sum < 1.0e-9) {
+      return ground_height_offset_;
+    }
+    return weighted_z / weight_sum + ground_height_offset_;
+  }
+
   std::string frame_id_;
   std::string child_frame_id_;
   std::string steering_mode_;
+  std::string map_path_;
   double dt_;
   double vx_lim_;
   double steer_lim_;
@@ -438,9 +636,17 @@ private:
   double steer_time_constant_;
   double steer_dead_band_;
   double steer_bias_;
+  double steering_mode_transition_time_;
+  double wheel_tread_;
+  double wheel_radius_;
+  std::string wheel_frame_prefix_;
   double initial_x_;
   double initial_y_;
   double initial_yaw_;
+  bool use_ground_height_;
+  double ground_height_offset_;
+  double target_rear_steer_ratio_ = -1.0;
+  double current_rear_steer_ratio_ = -1.0;
   double last_front_steer_cmd_ = 0.0;
   double last_rear_steer_cmd_ = 0.0;
   uint8_t current_control_mode_ = ControlModeReport::AUTONOMOUS;
@@ -452,6 +658,7 @@ private:
 
   Control current_control_;
   Control current_manual_control_;
+  std::vector<GroundPoint> ground_points_;
   std::unique_ptr<SimModelDelaySteerVelTwoAxis> model_;
   rclcpp::Subscription<Control>::SharedPtr sub_control_;
   rclcpp::Subscription<Control>::SharedPtr sub_manual_control_;

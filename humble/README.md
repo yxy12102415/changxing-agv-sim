@@ -12,6 +12,11 @@ and control against the same Gazebo scene.
 - `src/agv_vehicle_model`: two-axis steering simulator node and keyboard teleop.
 - `src/agv_map_visualizer`: Lanelet2, vehicle, and sampled lidar marker
   publishers for RViz.
+- `src/agv_mpc_controller`: centerline trajectory publisher and lightweight
+  sampling MPC tracker for the standalone simulation.
+- `src/autoware_*_msgs`: local Autoware-style message definitions used by the
+  simulator interface. This workspace is Autoware-style, not a full Autoware
+  checkout.
 - `src/agv_maps/map/changxing_v1.osm`: Changxing Lanelet2-style vector map.
 - `src/agv_bringup`: Autoware + Gazebo integration launch files and route helper.
 
@@ -41,14 +46,34 @@ ros2 launch agv_gazebo agv_gazebo_sim.launch.py
 ```
 
 It starts Gazebo, the AGV two-axis simulator, Gazebo pose follower, dynamic
-traffic/pedestrian obstacles, map loaders, RViz, and visualization marker nodes.
+traffic/pedestrian obstacles, standalone map visualization, centerline
+trajectory publishing, sampling MPC control, RViz, and visualization marker
+nodes.
 
 Useful launch arguments:
 
 ```bash
 ./sim.sh use_rviz:=false
+./sim.sh use_gazebo_gui:=false
+./sim.sh enable_mpc:=false
 ./sim.sh initial_x:=0.0674 initial_y:=-57.6716 initial_yaw:=-0.7297
 ./sim.sh steering_mode:=crab
+```
+
+MPC tracking errors are written by default to:
+
+```text
+/tmp/agv_mpc_error.csv
+```
+
+The main standalone control chain is:
+
+```text
+centerline_trajectory_publisher
+-> sampling_mpc_controller
+-> /control/command/control_cmd
+-> agv_two_axis_simulator_node
+-> /localization/kinematic_state
 ```
 
 ## Run With Autoware
@@ -152,4 +177,3 @@ make lidar markers appear offset or flickery in RViz.
 Lidar extrinsics are launch arguments too, using each frame prefix:
 `rslidar2_*`, `rslidar4_*`, `hesai_left_front_*`, and `hesai_right_rear_*`,
 where `*` is `x`, `y`, `z`, `yaw`, `pitch`, or `roll`.
-
